@@ -1,0 +1,14 @@
+# Web service (API, public pages, and the built SPA).
+# Create a second Railway service from the same repo and image for the worker.
+# Worker start command: node apps/api/dist/worker.js
+# Do not give the worker an HTTP healthcheck; it does not listen.
+
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile"
+
+[deploy]
+healthcheckPath = "/health"
+healthcheckTimeout = 30
+startCommand = "docker/web-entrypoint.sh"
+restartPolicyType = "ON_FAILURE"

@@ -1,0 +1,580 @@
+generator client {
+  provider     = "prisma-client"
+  output       = "../generated/prisma"
+  moduleFormat = "cjs"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ───────────── Enums ─────────────
+
+enum PlatformRole {
+  USER
+  CURATOR
+  SUPERADMIN
+}
+
+enum OrgType {
+  NONPROFIT_501C3
+  FISCALLY_SPONSORED
+  TRIBE
+  TRIBAL_ORGANIZATION
+  ANCSA_CORPORATION
+  MUNICIPALITY
+  SMALL_BUSINESS
+  INDIVIDUAL
+  OTHER
+}
+
+enum MemberRole {
+  OWNER
+  ADMIN
+  EDITOR
+  CONTRIBUTOR
+  VIEWER
+}
+
+enum Plan {
+  FREE
+  PRO
+  SPONSORED
+}
+
+enum DocumentKind {
+  IRS_DETERMINATION_LETTER
+  W9
+  FORM_990
+  AUDITED_FINANCIALS
+  FINANCIAL_STATEMENT
+  ORG_BUDGET
+  BOARD_LIST
+  BYLAWS
+  ARTICLES_OF_INCORPORATION
+  INSURANCE_CERTIFICATE
+  STRATEGIC_PLAN
+  ANNUAL_REPORT
+  LETTER_OF_SUPPORT
+  RFP_NOFO
+  GRANT_AGREEMENT
+  LOGO
+  PHOTO
+  RECEIPT
+  OTHER
+}
+
+enum ContentCategory {
+  MISSION
+  ORG_HISTORY
+  PROGRAM_DESCRIPTION
+  NEED_STATEMENT
+  GOALS_OBJECTIVES
+  EVALUATION_PLAN
+  SUSTAINABILITY
+  ORG_CAPACITY
+  COMMUNITY_ENGAGEMENT
+  BUDGET_NARRATIVE
+  KEY_PERSONNEL
+  OTHER
+}
+
+enum FunderType {
+  PRIVATE_FOUNDATION
+  COMMUNITY_FOUNDATION
+  CORPORATE
+  ANCSA_CORPORATION
+  TRIBAL
+  FEDERAL
+  STATE
+  LOCAL_GOVERNMENT
+  CDFI_LENDER
+  NONPROFIT_INTERMEDIARY
+  OTHER
+}
+
+enum FundingForm {
+  GRANT
+  LOAN
+  FORGIVABLE_LOAN
+  IN_KIND
+  PRIZE_AWARD
+  CONTRACT
+}
+
+enum DeadlineType {
+  FIXED
+  ROLLING
+  LOI_THEN_FULL
+  INVITATION_ONLY
+}
+
+enum OpportunityStatus {
+  DRAFT // curator-only
+  UPCOMING
+  OPEN
+  CLOSED
+  ARCHIVED
+}
+
+enum ApplicationStatus {
+  PROSPECT
+  PLANNING
+  DRAFTING
+  INTERNAL_REVIEW
+  SUBMITTED
+  AWARDED
+  DECLINED
+  WITHDRAWN
+}
+
+enum ChecklistItemKind {
+  NARRATIVE
+  ATTACHMENT
+  BUDGET
+  SIGNATURE
+  SUPPORT_LETTER
+  REGISTRATION
+  OTHER
+}
+
+enum ItemSource {
+  MANUAL
+  TEMPLATE
+  RFP_PARSER
+}
+
+enum ComplianceKind {
+  SAM_REGISTRATION
+  IRS_990
+  ALASKA_BIENNIAL_REPORT
+  PICK_CLICK_GIVE
+  INSURANCE_RENEWAL
+  BOARD_ELECTION
+  ANNUAL_MEETING
+  SINGLE_AUDIT
+  BUSINESS_LICENSE
+  FUNDER_REPORT
+  CUSTOM
+}
+
+enum ReminderTarget {
+  OPPORTUNITY_DEADLINE
+  APPLICATION_DUE
+  CHECKLIST_ITEM
+  COMPLIANCE_ITEM
+  DOCUMENT_EXPIRY
+}
+
+enum Channel {
+  EMAIL
+  SMS
+}
+
+enum ReminderStatus {
+  PENDING
+  SENT
+  FAILED
+  CANCELED
+  SKIPPED
+}
+
+enum DigestIssueStatus {
+  DRAFT
+  APPROVED
+  SENT
+}
+
+// ───────────── Identity ─────────────
+
+model User {
+  id                String       @id @default(cuid())
+  email             String       @unique
+  name              String?
+  phone             String? // E.164, set only after SMS verification
+  phoneVerifiedAt   DateTime?
+  smsOptIn          Boolean      @default(false)
+  timezone          String       @default("America/Juneau")
+  platformRole      PlatformRole @default(USER)
+  lastActiveOrgId   String?
+  calendarTokenHash String?      @unique // secret for the personal ICS feed
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+
+  sessions         Session[]
+  memberships      Membership[]
+  notificationPref NotificationPreference?
+  reminders        Reminder[]
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  userId    String
+  tokenHash String   @unique
+  expiresAt DateTime
+  userAgent String?
+  ip        String?
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+/// Magic link + 6-digit code (code lets people open the email on their phone and sign in on a laptop)
+model LoginToken {
+  id        String    @id @default(cuid())
+  email     String
+  tokenHash String    @unique
+  codeHash  String
+  attempts  Int       @default(0)
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([email, createdAt])
+}
+
+model NotificationPreference {
+  id              String @id @default(cuid())
+  userId          String @unique
+  emailEnabled    Boolean @default(true)
+  smsEnabled      Boolean @default(false)
+  weeklyDigest    Boolean @default(true)
+  digestWeekday   Int     @default(1) // 0=Sun … 6=Sat
+  digestHour      Int     @default(8) // local hour
+  reminderOffsets Int[]   @default([30, 14, 7, 2, 1]) // days before due
+  quietStartHour  Int     @default(21) // no SMS from 9pm…
+  quietEndHour    Int     @default(8) // …until 8am local
+  user            User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// ───────────── Organizations ─────────────
+
+model Organization {
+  id                   String    @id @default(cuid())
+  name                 String
+  slug                 String    @unique
+  type                 OrgType
+  community            String // from SE_COMMUNITIES (packages/shared) or free text
+  servesCommunities    String[]
+  ein                  String?
+  uei                  String? // SAM.gov Unique Entity ID
+  website              String?
+  mission              String?
+  annualBudget         Decimal?  @db.Decimal(14, 2)
+  fiscalYearStartMonth Int       @default(1) // 1–12
+  focusAreas           String[] // from FOCUS_AREAS (packages/shared)
+  receivesFederalFunds Boolean   @default(false)
+  fiscalSponsorName    String?
+  timezone             String    @default("America/Juneau")
+  plan                 Plan      @default(FREE)
+  stripeCustomerId     String?   @unique
+  aggregateDataConsent Boolean   @default(false) // opt-in for anonymized regional stats (Phase 4)
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+  deletedAt            DateTime?
+
+  memberships   Membership[]
+  invitations   Invitation[]
+  documents     Document[]
+  contentBlocks ContentBlock[]
+  applications  Application[]
+  compliance    ComplianceItem[]
+  watches       OpportunityWatch[]
+  reminders     Reminder[]
+  auditLogs     AuditLog[]
+}
+
+model Membership {
+  id             String       @id @default(cuid())
+  userId         String
+  organizationId String
+  role           MemberRole
+  createdAt      DateTime     @default(now())
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, organizationId])
+  @@index([organizationId])
+}
+
+model Invitation {
+  id             String     @id @default(cuid())
+  organizationId String
+  email          String
+  role           MemberRole
+  tokenHash      String     @unique
+  invitedById    String
+  expiresAt      DateTime
+  acceptedAt     DateTime?
+  createdAt      DateTime   @default(now())
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+}
+
+// ───────────── Vault & boilerplate ─────────────
+
+model Document {
+  id             String       @id @default(cuid())
+  organizationId String
+  kind           DocumentKind
+  title          String
+  storageKey     String       @unique
+  mimeType       String
+  sizeBytes      Int
+  effectiveDate  DateTime?    @db.Date
+  expiresAt      DateTime?    @db.Date
+  inFunderPacket Boolean      @default(false)
+  tags           String[]
+  uploadedById   String
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  deletedAt      DateTime?
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, kind])
+}
+
+model ContentBlock {
+  id             String                @id @default(cuid())
+  organizationId String
+  category       ContentCategory
+  title          String
+  body           String // markdown
+  wordCount      Int
+  charCount      Int
+  lastReviewedAt DateTime              @default(now())
+  version        Int                   @default(1)
+  createdById    String
+  updatedById    String
+  createdAt      DateTime              @default(now())
+  updatedAt      DateTime              @updatedAt
+  deletedAt      DateTime?
+  organization   Organization          @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  versions       ContentBlockVersion[]
+
+  @@index([organizationId, category])
+}
+
+model ContentBlockVersion {
+  id             String       @id @default(cuid())
+  contentBlockId String
+  version        Int
+  title          String
+  body           String
+  editedById     String
+  createdAt      DateTime     @default(now())
+  contentBlock   ContentBlock @relation(fields: [contentBlockId], references: [id], onDelete: Cascade)
+
+  @@unique([contentBlockId, version])
+}
+
+// ───────────── Directory (global, curated) ─────────────
+
+model Funder {
+  id               String        @id @default(cuid())
+  name             String
+  slug             String        @unique
+  type             FunderType
+  website          String?
+  description      String? // curator-written, plain language
+  geographicFocus  String[] // e.g. ["Alaska"], ["Southeast Alaska"], ["Ketchikan"]
+  focusAreas       String[]
+  eligibleOrgTypes OrgType[]
+  curatorNotes     String? // internal only, never rendered publicly
+  isPublished      Boolean       @default(false)
+  lastVerifiedAt   DateTime?
+  verifiedById     String?
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+  opportunities    Opportunity[]
+}
+
+model Opportunity {
+  id                  String            @id @default(cuid())
+  funderId            String
+  title               String
+  slug                String            @unique
+  summary             String // curator-written, plain language
+  url                 String?
+  fundingForm         FundingForm       @default(GRANT)
+  eligibleOrgTypes    OrgType[] // empty = see summary / not restricted
+  eligibleCommunities String[] // empty = not restricted within funder's geography
+  focusAreas          String[]
+  minAmount           Decimal?          @db.Decimal(14, 2)
+  maxAmount           Decimal?          @db.Decimal(14, 2)
+  matchRequired       Boolean           @default(false)
+  matchNotes          String?
+  deadlineType        DeadlineType
+  deadlineAt          DateTime? // exact instant (UTC)
+  deadlineTimezone    String? // funder's stated tz, e.g. "America/New_York"
+  loiDeadlineAt       DateTime?
+  opensAt             DateTime?
+  recurrenceNote      String? // e.g. "Usually opens each February"
+  assistanceListing   String? // federal Assistance Listing number, if any
+  requiresSam         Boolean           @default(false)
+  status              OpportunityStatus @default(DRAFT)
+  isPublic            Boolean           @default(true)
+  curatorNotes        String?
+  lastVerifiedAt      DateTime?
+  verifiedById        String?
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
+  funder              Funder            @relation(fields: [funderId], references: [id])
+  watches             OpportunityWatch[]
+  applications        Application[]
+
+  @@index([status, deadlineAt])
+  @@index([funderId])
+}
+
+model OpportunityWatch {
+  id             String       @id @default(cuid())
+  organizationId String
+  opportunityId  String
+  createdAt      DateTime     @default(now())
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  opportunity    Opportunity  @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, opportunityId])
+}
+
+// ───────────── Applications ─────────────
+
+model Application {
+  id               String            @id @default(cuid())
+  organizationId   String
+  opportunityId    String?
+  customFunderName String? // when the funder isn't in the directory
+  title            String
+  status           ApplicationStatus @default(PROSPECT)
+  amountRequested  Decimal?          @db.Decimal(14, 2)
+  amountAwarded    Decimal?          @db.Decimal(14, 2)
+  funderDeadlineAt DateTime? // copied from opportunity, overridable
+  internalDueAt    DateTime? // default: funder deadline minus buffer (§8 F8)
+  submittedAt      DateTime?
+  decisionAt       DateTime?
+  ownerUserId      String?
+  notes            String?
+  declineFeedback  String?
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  deletedAt        DateTime?
+  organization     Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  opportunity      Opportunity?      @relation(fields: [opportunityId], references: [id])
+  checklist        ChecklistItem[]
+
+  @@index([organizationId, status])
+}
+
+model ChecklistItem {
+  id               String            @id @default(cuid())
+  applicationId    String
+  label            String
+  kind             ChecklistItemKind @default(OTHER)
+  source           ItemSource        @default(MANUAL)
+  sortOrder        Int               @default(0)
+  dueAt            DateTime?
+  assigneeId       String?
+  doneAt           DateTime?
+  linkedDocumentId String?
+  notes            String?
+  application      Application       @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+
+  @@index([applicationId])
+}
+
+// ───────────── Compliance & reminders ─────────────
+
+model ComplianceItem {
+  id               String         @id @default(cuid())
+  organizationId   String
+  kind             ComplianceKind
+  title            String
+  description      String?
+  dueAt            DateTime       @db.Date
+  rrule            String? // RFC 5545, e.g. "FREQ=YEARLY;INTERVAL=1"
+  lastCompletedAt  DateTime?
+  linkedDocumentId String?
+  isActive         Boolean        @default(true)
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+  organization     Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, dueAt])
+}
+
+model Reminder {
+  id             String         @id @default(cuid())
+  organizationId String
+  targetType     ReminderTarget
+  targetId       String
+  recipientId    String
+  channel        Channel
+  offsetDays     Int
+  dueAtSnapshot  DateTime // the due date this reminder was computed from
+  sendAt         DateTime
+  status         ReminderStatus @default(PENDING)
+  sentAt         DateTime?
+  error          String?
+  createdAt      DateTime       @default(now())
+  organization   Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  recipient      User           @relation(fields: [recipientId], references: [id], onDelete: Cascade)
+
+  @@unique([targetType, targetId, recipientId, channel, offsetDays])
+  @@index([status, sendAt])
+}
+
+// ───────────── Public digest ─────────────
+
+model DigestSubscriber {
+  id               String    @id @default(cuid())
+  email            String    @unique
+  communities      String[]
+  focusAreas       String[]
+  confirmTokenHash String?   @unique
+  unsubTokenHash   String    @unique
+  confirmedAt      DateTime?
+  unsubscribedAt   DateTime?
+  createdAt        DateTime  @default(now())
+}
+
+model DigestIssue {
+  id             String            @id @default(cuid())
+  subject        String
+  bodyMd         String
+  opportunityIds String[]
+  status         DigestIssueStatus @default(DRAFT)
+  approvedById   String?
+  sentAt         DateTime?
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+}
+
+// ───────────── Platform ─────────────
+
+/// Curated values that change over time (regulatory thresholds, rates). Never hardcode these.
+model PlatformSetting {
+  key         String    @id
+  value       String
+  description String
+  sourceUrl   String?
+  verifiedAt  DateTime?
+  updatedAt   DateTime  @updatedAt
+}
+
+model AuditLog {
+  id             String        @id @default(cuid())
+  organizationId String?
+  userId         String?
+  action         String // e.g. "document.download", "membership.role_changed", "org.export"
+  entityType     String
+  entityId       String?
+  metadata       Json?
+  ip             String?
+  createdAt      DateTime      @default(now())
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, createdAt])
+}

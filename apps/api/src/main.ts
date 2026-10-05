@@ -1,0 +1,10 @@
+import { createApp } from "./bootstrap";
+import { loadEnv } from "./common/config/env";
+
+async function main(): Promise<void> {
+  const env = loadEnv();
+  const app = await createApp();
+  await app.listen(env.PORT, "0.0.0.0");
+}
+
+void main();
