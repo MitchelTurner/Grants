@@ -58,7 +58,15 @@ export function formatEnvError(error: z.ZodError): string {
 }
 
 export function loadEnv(source: NodeJS.ProcessEnv = process.env): Env {
-  const parsed = envSchema.safeParse(source);
+  // SPEC-QUESTION: A linked Railway Postgres service may set DATABASE_PRIVATE_URL
+  // or DATABASE_PUBLIC_URL and leave DATABASE_URL empty. Use that connection string.
+  const databaseUrl =
+    source.DATABASE_URL || source.DATABASE_PRIVATE_URL || source.DATABASE_PUBLIC_URL;
+  const withDatabase =
+    databaseUrl && databaseUrl !== source.DATABASE_URL
+      ? { ...source, DATABASE_URL: databaseUrl }
+      : source;
+  const parsed = envSchema.safeParse(withDatabase);
   if (!parsed.success) {
     throw new Error(`Invalid environment:\n${formatEnvError(parsed.error)}`);
   }

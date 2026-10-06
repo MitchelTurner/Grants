@@ -37,6 +37,12 @@ describe("loadEnv", () => {
     expect(() => loadEnv(source)).toThrow(/DATABASE_URL/);
   });
 
+  it("uses a linked Postgres URL when DATABASE_URL is empty", () => {
+    const source: NodeJS.ProcessEnv = { ...valid, DATABASE_URL: "" };
+    source.DATABASE_PRIVATE_URL = "postgresql://postgres:postgres@postgres.internal:5432/segrants";
+    expect(loadEnv(source).DATABASE_URL).toBe(source.DATABASE_PRIVATE_URL);
+  });
+
   it("formats issues without echoing values", () => {
     const parsed = formatEnvError(new ZodError([]));
     expect(parsed).toBe("");

@@ -43,7 +43,7 @@ API tests expect Postgres at `postgresql://postgres:postgres@localhost:5432/segr
 
 ## Production shape
 
-The Docker image serves the API and the built app. On start it applies Prisma migrations, then listens on `PORT`.
+The Docker image serves the API and the built app. On start it applies Prisma migrations, then listens on `PORT`. The image does not contain a database URL. Set `DATABASE_URL` on the service. A linked Railway Postgres service may provide `DATABASE_PRIVATE_URL` instead; the start script copies that into `DATABASE_URL`.
 
 Railway web service: this repo's `Dockerfile`, health check `/health`.
 

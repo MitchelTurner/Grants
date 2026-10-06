@@ -4,7 +4,13 @@ RUN apt-get update \
   && apt-get install -y --no-install-recommends openssl ca-certificates \
   && rm -rf /var/lib/apt/lists/*
 
-RUN corepack enable && corepack prepare pnpm@10.33.3 --activate
+# The node user must see the prepared pnpm. Otherwise every boot asks Corepack
+# to download it again.
+ENV COREPACK_HOME=/opt/corepack
+RUN mkdir -p /opt/corepack \
+  && corepack enable \
+  && corepack prepare pnpm@10.33.3 --activate \
+  && chmod -R a+rX /opt/corepack
 
 WORKDIR /app
 
@@ -18,16 +24,15 @@ RUN pnpm install --frozen-lockfile
 
 COPY . .
 
-# prisma.config.ts requires DATABASE_URL even for generate. The build does not connect.
-RUN DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:5432/segrants \
-  pnpm --filter @se-grants/db generate \
+# prisma generate does not open a connection. A missing DATABASE_URL is filled
+# only for that command. Do not bake a production database URL into the image.
+RUN pnpm --filter @se-grants/db generate \
   && pnpm --filter @se-grants/shared build \
-  && DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:5432/segrants \
-  pnpm --filter @se-grants/db build \
+  && pnpm --filter @se-grants/db build \
   && pnpm --filter @se-grants/web build \
   && pnpm --filter @se-grants/api build \
   && chmod +x docker/web-entrypoint.sh \
-  && chown -R node:node /app
+  && chown -R node:node /app /opt/corepack
 
 USER node
 ENV NODE_ENV=production

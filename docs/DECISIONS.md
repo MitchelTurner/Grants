@@ -2,6 +2,16 @@
 
 Running log of choices made where the spec was silent, or where a dependency constraint forced a narrower option. Newest first.
 
+## 2026-10-06 — Prisma needs DATABASE_URL when the config file loads
+
+`env("DATABASE_URL")` throws while Prisma loads `packages/db/prisma.config.ts`, before it connects. Two places hit that with no `.env` file in the working directory.
+
+Turbo 2 strict mode does not pass undeclared variables into tasks. CI sets `DATABASE_URL`, then `pnpm typecheck` runs `prisma generate` through Turbo, which dropped the variable. `globalPassThroughEnv` lists the runtime variables so tasks see them. They are not part of the cache key.
+
+`prisma generate` does not open a connection. If `DATABASE_URL` is still missing, that command alone uses a local placeholder. Migrate, seed, and the API still require a real URL. The image does not bake one in.
+
+A linked Railway Postgres service may set `DATABASE_PRIVATE_URL` or `DATABASE_PUBLIC_URL` and leave `DATABASE_URL` empty. The container entrypoint and `loadEnv` copy that connection string into `DATABASE_URL`. They do not invent a host. The entrypoint calls the Prisma binary directly, and the image keeps Corepack's pnpm cache in `/opt/corepack`, so the `node` user does not download pnpm on every boot.
+
 ## 2026-10-06 — Phase 3 money tools
 
 Phase 3 is in the app. Phase 4 is not. Awards, budgets, receipts, reimbursement forecasts, match logs, report drafts, the funder log, the Single Audit display, and Stripe Checkout plus the Customer Portal are wired. Sponsored seats, the funder portal, and the regional dashboard stay out.
