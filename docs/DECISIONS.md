@@ -2,6 +2,70 @@
 
 Running log of choices made where the spec was silent, or where a dependency constraint forced a narrower option. Newest first.
 
+## 2026-10-06 — Phase 1 is in the app; launch accounts are not
+
+Milestones M1–M8 are implemented on top of the M0 scaffold: passwordless sign-in, organizations, the document vault, content blocks, the directory, applications, compliance, reminders, the calendar feed, the public site, the digest, export, and curator admin. Phase 2–4 (AI drafting, awards, billing, the funder portal) are not built.
+
+The launch checklist items that need accounts outside this repository stay open: Twilio A2P 10DLC, a verified Postmark domain, curator verification of every published record, a production backup restore drill, and pilot organizations. Privacy and terms are published in the app, including the future AI disclosure. There is no Railway token here, so staging was not deployed and the backup drill was not run against production.
+
+Critical flows are covered by API integration tests against the in-memory email, SMS, and storage providers, plus shared unit tests. Playwright is not wired: the same flows are exercised through the API suite and a browser pass of the logged-in app. Adding a browser runner is a follow-up once Chromium is part of the environment.
+
+## 2026-10-06 — Hand-built interface instead of the shadcn CLI
+
+The logged-in app uses a small set of hand-built controls (buttons, fields, cards) on the light theme from M0. The shadcn generator was skipped so the first JavaScript payload stays under the 200 KB gzip budget. Route screens are loaded separately. `vite-plugin-pwa` precaches the app shell. `workbox-window` is the small helper that registers the service worker.
+
+## 2026-10-06 — HEIC photos use the browser decoder
+
+Images are resized to 2000px and re-encoded as JPEG before upload. HEIC is converted only when `createImageBitmap` can decode it. A separate HEIC library would add a large download on the documents screen. If the browser cannot read the file, the upload asks the person to save a JPEG.
+
+## 2026-10-06 — Session cookie is Secure only on https
+
+`APP_URL` on a laptop is `http://localhost`. A `Secure` cookie would never be stored, so sign-in would fail. The session and CSRF cookies are `Secure` only when `APP_URL` starts with `https://`. Production Railway URLs are https, so the cookies are Secure there.
+
+## 2026-10-06 — CSRF is skipped for public forms, webhooks, and local uploads
+
+Mutations need `X-CSRF-Token` matching the `se_csrf` cookie. The public digest form, provider webhooks, and the local `/api/v1/dev-storage` upload URL do not send that header. The upload URL is signed, and webhooks are authenticated by the provider payload rather than a browser session.
+
+## 2026-10-06 — Reminder mute lives on the membership
+
+Notification preferences are per person. Muting reminders is per organization, so `Membership.remindersMuted` was added in a new migration. The spec does not name a column for that mute.
+
+## 2026-10-06 — Other Phase 1 choices the spec leaves open
+
+- Resend invitation is `POST /orgs/:orgId/invitations/:id/resend`.
+- Phone verification codes live in Redis for 10 minutes, not in a new table.
+- The calendar feed URL is shown only when the token is rotated. Only the hash is stored.
+- An application has two reminder targets (`applicationId` and `applicationId:internal`) because one unique key cannot hold both due dates.
+- Document expiry uses the fixed 45/14/3 day offsets, not the person's reminder offsets.
+- Date-only dues fire at 17:00 in the organization time zone.
+- Opportunity reminders go to owners, admins, and editors. Compliance and document expiry go to owners and admins. Checklist reminders go to the assignee. Application reminders go to the owner, or to owners and admins when no owner is set. Muted memberships are skipped.
+- Overdue items stay in next actions until they are done.
+- The verification queue is a query. The nightly job only changes opportunity status.
+- Tests use an in-memory queue. The worker process uses BullMQ.
+- The public site uses a hand-written stylesheet so pages stay small and work without JavaScript.
+- `/funders` is an index page in front of the funder detail pages.
+- CSV import is a dry run unless `dryRun=false`.
+- An admin cannot change or remove an owner. Only an owner can.
+- The city and borough funder seed is one unpublished placeholder, not an invented municipality.
+- `GET /api/v1/test/mailbox` returns captured mail when `NODE_ENV=test`, and an empty list otherwise.
+- The sitemap and robots file use `APP_URL` as the host.
+
+## 2026-10-06 — Dependencies added for Phase 1
+
+| Package                                               | Why                                                         |
+| ----------------------------------------------------- | ----------------------------------------------------------- |
+| `date-fns`, `date-fns-tz`                             | Deadline display and organization-local times               |
+| `rrule`                                               | Compliance dates that repeat                                |
+| `decimal.js`                                          | Money formatting without binary floats                      |
+| `@aws-sdk/client-s3`, `@aws-sdk/s3-request-presigner` | Private file storage and short download links               |
+| `@nestjs/throttler`                                   | Rate limits on auth, invites, uploads, and public subscribe |
+| `nestjs-zod`                                          | Global Zod pipe, alongside the shared schemas               |
+| `handlebars`                                          | Public pages                                                |
+| `archiver`                                            | Organization export zip                                     |
+| `vite-plugin-pwa`, `workbox-window`, `idb`            | Installable app shell and on-device writing drafts          |
+
+Postmark and Twilio are called with `fetch`, not their official SDKs.
+
 ## 2026-10-05 — Milestone 0 stops at the scaffold
 
 Phase 1 features (auth, orgs, vault, directory, and the rest of §8) are not implemented. The Prisma schema for Phase 1 is in place so later milestones migrate forward instead of rewriting the first migration. The seed script runs and inserts nothing; funder names and platform settings from §14 land in M4, still unpublished until a curator verifies them.

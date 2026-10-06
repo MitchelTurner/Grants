@@ -290,6 +290,8 @@ model Membership {
   userId         String
   organizationId String
   role           MemberRole
+  // SPEC-QUESTION: mute is per organization, but NotificationPreference is per user.
+  remindersMuted Boolean      @default(false)
   createdAt      DateTime     @default(now())
   user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)

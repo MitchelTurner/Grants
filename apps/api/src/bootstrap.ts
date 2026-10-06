@@ -6,10 +6,19 @@ import { RequestMethod, type INestApplication } from "@nestjs/common";
 import { NestFactory } from "@nestjs/core";
 import express from "express";
 import helmet from "helmet";
+import { ZodValidationPipe } from "nestjs-zod";
 import { Logger } from "nestjs-pino";
 import { AppModule } from "./app.module";
+import { ENV, type Env } from "./common/config/env";
+import { randomToken } from "./common/crypto";
 import { ApiExceptionFilter } from "./common/filters/api-exception.filter";
+import { readCookie } from "./common/http/cookies";
 import { requestIdMiddleware } from "./common/http/request-id";
+import {
+  MemoryStorageProvider,
+  STORAGE,
+  type StorageProvider,
+} from "./common/storage/storage.provider";
 import { HealthService } from "./modules/health/health.service";
 
 export async function createApp(): Promise<INestApplication> {
@@ -36,9 +45,51 @@ export async function createApp(): Promise<INestApplication> {
       crossOriginEmbedderPolicy: false,
     }),
   );
-  app.setGlobalPrefix("api/v1", {
-    exclude: [{ path: "/", method: RequestMethod.GET }],
+  const env = app.get<Env>(ENV);
+  const httpAdapter = http;
+  httpAdapter.use(express.urlencoded({ extended: false, limit: "2mb" }));
+  httpAdapter.use((req, res, next) => {
+    let token = readCookie(req, "se_csrf");
+    if (!token) {
+      token = randomToken();
+      res.cookie("se_csrf", token, {
+        httpOnly: false,
+        sameSite: "lax",
+        secure: env.APP_URL.startsWith("https://"),
+        path: "/",
+        maxAge: 30 * 24 * 60 * 60 * 1000,
+      });
+    }
+    (req as express.Request & { csrfToken?: string }).csrfToken = token;
+    next();
   });
+  mountDevStorage(app, httpAdapter);
+  const publicDir = [
+    join(moduleDir(), "public"),
+    join(process.cwd(), "src/public"),
+    join(process.cwd(), "apps/api/src/public"),
+  ].find((path) => existsSync(path));
+  if (publicDir) {
+    httpAdapter.use("/assets", express.static(publicDir));
+  }
+  app.setGlobalPrefix("api/v1", {
+    exclude: [
+      { path: "/", method: RequestMethod.GET },
+      { path: "grants", method: RequestMethod.GET },
+      { path: "grants/:slug", method: RequestMethod.GET },
+      { path: "funders", method: RequestMethod.GET },
+      { path: "funders/:slug", method: RequestMethod.GET },
+      { path: "about", method: RequestMethod.GET },
+      { path: "privacy", method: RequestMethod.GET },
+      { path: "terms", method: RequestMethod.GET },
+      { path: "digest/check-email", method: RequestMethod.GET },
+      { path: "digest/confirmed", method: RequestMethod.GET },
+      { path: "digest/unsubscribed", method: RequestMethod.GET },
+      { path: "robots.txt", method: RequestMethod.GET },
+      { path: "sitemap.xml", method: RequestMethod.GET },
+    ],
+  });
+  app.useGlobalPipes(new ZodValidationPipe());
   app.useGlobalFilters(new ApiExceptionFilter());
   app.enableShutdownHooks();
 
@@ -61,6 +112,48 @@ function moduleDir(): string {
     // Vitest transforms this file as ESM, where __dirname is not defined.
   }
   return join(process.cwd(), "src");
+}
+
+function mountDevStorage(app: INestApplication, http: express.Express): void {
+  const storage = app.get<StorageProvider>(STORAGE);
+  if (!(storage instanceof MemoryStorageProvider)) {
+    return;
+  }
+  const raw = express.raw({ type: () => true, limit: "26mb" });
+  http.put("/api/v1/dev-storage", raw, async (req, res) => {
+    const key = String(req.query.key ?? "");
+    const exp = String(req.query.exp ?? "");
+    const sig = String(req.query.sig ?? "");
+    if (!storage.authorize("PUT", key, exp, sig)) {
+      res.status(403).end();
+      return;
+    }
+    const body = Buffer.isBuffer(req.body) ? req.body : Buffer.alloc(0);
+    await storage.put(key, body, req.header("content-type") ?? "application/octet-stream");
+    res.status(204).end();
+  });
+  http.get("/api/v1/dev-storage", async (req, res) => {
+    const key = String(req.query.key ?? "");
+    const exp = String(req.query.exp ?? "");
+    const sig = String(req.query.sig ?? "");
+    if (!storage.authorize("GET", key, exp, sig)) {
+      res.status(403).end();
+      return;
+    }
+    const file = await storage.get(key);
+    if (!file) {
+      res.status(404).end();
+      return;
+    }
+    const filename = String(req.query.filename ?? "download");
+    if (req.query.attachment === "1") {
+      res.setHeader(
+        "content-disposition",
+        `attachment; filename="${filename.replaceAll('"', "")}"`,
+      );
+    }
+    res.type(file.contentType).send(file.body);
+  });
 }
 
 function mountSpa(http: express.Express): void {

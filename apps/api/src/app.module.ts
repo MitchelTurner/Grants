@@ -7,8 +7,9 @@ import { ENV, type Env } from "./common/config/env";
 import { resolveRequestId } from "./common/http/request-id";
 import { PrismaModule } from "./common/prisma/prisma.module";
 import { RedisModule } from "./common/redis/redis.module";
+import { QueueModule } from "./common/jobs/queue.module";
 import { HealthModule } from "./modules/health/health.module";
-import { RootModule } from "./modules/root/root.module";
+import { Phase1Module } from "./modules/phase1.module";
 
 const sentryImports = process.env.SENTRY_DSN ? [SentryModule.forRoot()] : [];
 
@@ -54,8 +55,9 @@ function headerValue(value: string | string[] | undefined): string | undefined {
     }),
     PrismaModule,
     RedisModule,
+    QueueModule,
     HealthModule,
-    RootModule,
+    Phase1Module,
   ],
 })
 export class AppModule {}

@@ -41,9 +41,10 @@ describe("health", () => {
     expect(typeof response.body.error.message).toBe("string");
   });
 
-  it("GET / names the service until the public site exists", async () => {
+  it("GET / is the public home page", async () => {
     const response = await request(app.getHttpServer()).get("/");
     expect(response.status).toBe(200);
-    expect(response.body.name).toBe("Southeast Grants");
+    expect(response.text).toContain("Southeast Grants");
+    expect(response.text).toContain("Never miss a deadline");
   });
 });

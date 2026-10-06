@@ -2,7 +2,7 @@
 
 A Southeast Alaska–first grants workspace. The product spec is [`docs/SPEC.md`](docs/SPEC.md). Choices that the spec does not pin down are in [`docs/DECISIONS.md`](docs/DECISIONS.md).
 
-This repository is at **milestone 0**: the monorepo boots, checks Postgres and Redis, and serves a small status page. Sign-in, organizations, and the rest of Phase 1 are not built yet.
+Phase 1 is in place: passwordless sign-in, organizations, documents, writing, the directory, applications, compliance, reminders, a public site, and curator tools. AI drafting, awards, and billing are later phases. See the launch checklist in the spec for accounts this repo cannot finish (Twilio, Postmark, production backups, pilot organizations).
 
 ## What you need
 
@@ -26,7 +26,9 @@ pnpm dev
 - App (dev): http://localhost:5173/app/
 - Worker: `pnpm --filter @se-grants/api start:worker` after a build, or `pnpm --filter @se-grants/api exec nest start --watch --entryFile worker` once the API dependencies are installed
 
-`pnpm db:seed` runs and currently inserts nothing. Directory seed data arrives in a later milestone.
+`pnpm db:seed` inserts the unpublished funder names and platform settings from the spec. A curator publishes a record only after verifying it.
+
+The logged-in app is at `/app`. Public pages (`/`, `/grants`, `/funders`, `/about`, `/privacy`, `/terms`) are server-rendered and do not need JavaScript.
 
 ## Checks
 

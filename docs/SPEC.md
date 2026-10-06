@@ -830,134 +830,134 @@ model AuditLog {
 
 Passwordless email sign-in: magic link **and** a 6-digit code in the same email.
 
-- [ ] `POST /auth/login-request` always returns 200 (no account enumeration); rate-limited per email and per IP.
-- [ ] Link and code expire in 15 minutes and work once. Max 5 code attempts per token.
-- [ ] First sign-in creates the `User`. If they have a pending invitation, it's accepted automatically.
-- [ ] Session: httpOnly, Secure, SameSite=Lax cookie holding a random token. Only its SHA-256 hash is stored. 30-day sliding expiry.
-- [ ] CSRF: mutations require an `X-CSRF-Token` header matching a double-submit cookie.
-- [ ] Logout deletes the session. "Sign out everywhere" deletes all of the user's sessions.
+- [x] `POST /auth/login-request` always returns 200 (no account enumeration); rate-limited per email and per IP.
+- [x] Link and code expire in 15 minutes and work once. Max 5 code attempts per token.
+- [x] First sign-in creates the `User`. If they have a pending invitation, it's accepted automatically.
+- [x] Session: httpOnly, Secure, SameSite=Lax cookie holding a random token. Only its SHA-256 hash is stored. 30-day sliding expiry.
+- [x] CSRF: mutations require an `X-CSRF-Token` header matching a double-submit cookie.
+- [x] Logout deletes the session. "Sign out everywhere" deletes all of the user's sessions.
 
 ### F2. Organizations, members, invitations
 
-- [ ] Create org via a short wizard: name, type, community, focus areas, "do you receive federal funds?" (EIN/UEI/budget optional, can be added later).
-- [ ] Creator becomes OWNER. Org slug is auto-generated and unique.
-- [ ] Org switcher in the header. Remembers `lastActiveOrgId`.
-- [ ] Invite by email with role. Invitation expires in 14 days. Admins can resend/revoke.
-- [ ] Role changes and removals are audit-logged. An org must always have ≥1 OWNER.
-- [ ] Tenant isolation test suite: for every org-scoped endpoint, a user from Org B gets 404 on Org A's resources (generated table-driven test).
+- [x] Create org via a short wizard: name, type, community, focus areas, "do you receive federal funds?" (EIN/UEI/budget optional, can be added later).
+- [x] Creator becomes OWNER. Org slug is auto-generated and unique.
+- [x] Org switcher in the header. Remembers `lastActiveOrgId`.
+- [x] Invite by email with role. Invitation expires in 14 days. Admins can resend/revoke.
+- [x] Role changes and removals are audit-logged. An org must always have ≥1 OWNER.
+- [x] Tenant isolation test suite: for every org-scoped endpoint, a user from Org B gets 404 on Org A's resources (generated table-driven test).
 
 ### F3. Org profile
 
-- [ ] Profile page with plain-language helper text for each field. Example: "UEI: your 12-character federal ID from SAM.gov. You only need this for federal grants."
-- [ ] Profile completeness meter (what's missing and why it matters).
-- [ ] Changing `type` or `receivesFederalFunds` offers to add the matching compliance templates (F9).
+- [x] Profile page with plain-language helper text for each field. Example: "UEI: your 12-character federal ID from SAM.gov. You only need this for federal grants."
+- [x] Profile completeness meter (what's missing and why it matters).
+- [x] Changing `type` or `receivesFederalFunds` offers to add the matching compliance templates (F9).
 
 ### F4. Document vault
 
-- [ ] Upload: browser requests presigned PUT (`POST /orgs/:orgId/documents/upload-url`), uploads directly to R2, then confirms metadata. Server verifies object size/type with a HEAD request before creating the `Document`.
-- [ ] Limits: 25 MB/file; allowed types: PDF, DOCX, XLSX, PNG, JPG, HEIC (converted client-side to JPG), TXT, CSV.
-- [ ] Images are compressed client-side to max 2000px before upload (saves bandwidth on rural connections).
-- [ ] Upload retries automatically on network failure (3 attempts, exponential backoff) with a visible progress bar.
-- [ ] Documents grouped by kind with a "funder packet" checklist showing which standard documents are missing (IRS letter, W-9, board list, budget, financials, insurance certificate).
-- [ ] `expiresAt` creates `DOCUMENT_EXPIRY` reminders (45/14/3 days).
-- [ ] Download uses a presigned GET URL valid for 5 minutes. Every download is audit-logged.
+- [x] Upload: browser requests presigned PUT (`POST /orgs/:orgId/documents/upload-url`), uploads directly to R2, then confirms metadata. Server verifies object size/type with a HEAD request before creating the `Document`.
+- [x] Limits: 25 MB/file; allowed types: PDF, DOCX, XLSX, PNG, JPG, HEIC (converted client-side to JPG), TXT, CSV.
+- [x] Images are compressed client-side to max 2000px before upload (saves bandwidth on rural connections).
+- [x] Upload retries automatically on network failure (3 attempts, exponential backoff) with a visible progress bar.
+- [x] Documents grouped by kind with a "funder packet" checklist showing which standard documents are missing (IRS letter, W-9, board list, budget, financials, insurance certificate).
+- [x] `expiresAt` creates `DOCUMENT_EXPIRY` reminders (45/14/3 days).
+- [x] Download uses a presigned GET URL valid for 5 minutes. Every download is audit-logged.
 
 ### F5. Boilerplate library ("content blocks")
 
-- [ ] Markdown editor (simple: bold, italic, lists, links) with live word + character counts.
-- [ ] **Autosave** every 3 seconds to IndexedDB and every 10 seconds to the server. If the connection drops, nothing is lost. A "Saved / Saving… / Offline, saved on this device" indicator.
-- [ ] Every save that changes body or title creates a `ContentBlockVersion`. Version history with restore.
-- [ ] One-click "Copy" (plain text and markdown variants).
-- [ ] "Needs review" badge when `lastReviewedAt` > 12 months ago, plus a "Mark reviewed" button.
-- [ ] Starter templates per category with prompts ("In 2–3 sentences, who do you serve and why?").
+- [x] Markdown editor (simple: bold, italic, lists, links) with live word + character counts.
+- [x] **Autosave** every 3 seconds to IndexedDB and every 10 seconds to the server. If the connection drops, nothing is lost. A "Saved / Saving… / Offline, saved on this device" indicator.
+- [x] Every save that changes body or title creates a `ContentBlockVersion`. Version history with restore.
+- [x] One-click "Copy" (plain text and markdown variants).
+- [x] "Needs review" badge when `lastReviewedAt` > 12 months ago, plus a "Mark reviewed" button.
+- [x] Starter templates per category with prompts ("In 2–3 sentences, who do you serve and why?").
 
 ### F6. Funder & opportunity directory
 
 **Curator side (admin):**
 
-- [ ] CRUD for funders and opportunities. Markdown summary. Publish/unpublish.
-- [ ] "Verify" action sets `lastVerifiedAt`/`verifiedById`. A verification queue lists records not verified in `OPPORTUNITY_STALE_DAYS` (setting, default 90).
-- [ ] CSV import for opportunities (dry-run preview, then commit).
-- [ ] Deadline input: date + time + **time zone picker** (defaults to America/New_York for FEDERAL funders, America/Juneau otherwise).
+- [x] CRUD for funders and opportunities. Markdown summary. Publish/unpublish.
+- [x] "Verify" action sets `lastVerifiedAt`/`verifiedById`. A verification queue lists records not verified in `OPPORTUNITY_STALE_DAYS` (setting, default 90).
+- [x] CSV import for opportunities (dry-run preview, then commit).
+- [x] Deadline input: date + time + **time zone picker** (defaults to America/New_York for FEDERAL funders, America/Juneau otherwise).
 
 **Org side:**
 
-- [ ] Search/filter: text, funder type, funding form, focus area, community, status (open/upcoming), amount range, "deadline within N days."
-- [ ] **Fit label** per opportunity for the active org (rules-based, no AI). Displayed as "Good fit," "Possible fit," or "Not eligible," always with plain reasons:
+- [x] Search/filter: text, funder type, funding form, focus area, community, status (open/upcoming), amount range, "deadline within N days."
+- [x] **Fit label** per opportunity for the active org (rules-based, no AI). Displayed as "Good fit," "Possible fit," or "Not eligible," always with plain reasons:
   - Not eligible: `eligibleOrgTypes` non-empty and the org type isn't in it, or `eligibleCommunities` non-empty and the org's community/served communities don't intersect.
   - Score: +40 org type explicitly eligible (+20 if unrestricted), +25 community match (+15 if unrestricted), +10 per overlapping focus area (max +30). ≥70 = Good fit, else Possible fit.
-- [ ] Every opportunity shows "Last verified: <date>" and a link to the funder's page. Unverified/stale records show a caution note.
-- [ ] **Deadline display rule (everywhere):** show the deadline in the viewer's time zone; if the funder's time zone differs, also show the original ("Thu, Mar 12 · 7:59 PM Alaska (11:59 PM Eastern)") with a highlighted chip.
-- [ ] If `requiresSam` and the org has no UEI or its SAM compliance item expires before the deadline, show a warning: "This requires an active SAM.gov registration. Registration can take several weeks. Start now."
-- [ ] "Watch" an opportunity → it appears on the calendar and gets reminders.
+- [x] Every opportunity shows "Last verified: <date>" and a link to the funder's page. Unverified/stale records show a caution note.
+- [x] **Deadline display rule (everywhere):** show the deadline in the viewer's time zone; if the funder's time zone differs, also show the original ("Thu, Mar 12 · 7:59 PM Alaska (11:59 PM Eastern)") with a highlighted chip.
+- [x] If `requiresSam` and the org has no UEI or its SAM compliance item expires before the deadline, show a warning: "This requires an active SAM.gov registration. Registration can take several weeks. Start now."
+- [x] "Watch" an opportunity → it appears on the calendar and gets reminders.
 
 ### F7. Calendar + ICS feed
 
-- [ ] Month and agenda views merging: watched opportunity deadlines, application internal + funder deadlines, checklist due dates, compliance due dates, document expirations. Color-coded by type, with a filter.
-- [ ] Mobile defaults to agenda view.
-- [ ] Personal ICS feed URL (`/api/v1/calendar/feed/:token.ics`) covering all of the user's orgs. Rotatable token. Events include links back to the app.
+- [x] Month and agenda views merging: watched opportunity deadlines, application internal + funder deadlines, checklist due dates, compliance due dates, document expirations. Color-coded by type, with a filter.
+- [x] Mobile defaults to agenda view.
+- [x] Personal ICS feed URL (`/api/v1/calendar/feed/:token.ics`) covering all of the user's orgs. Rotatable token. Events include links back to the app.
 
 ### F8. Applications pipeline
 
-- [ ] Kanban by status (drag-and-drop on desktop, status dropdown on mobile) plus a sortable list view.
-- [ ] Create from an opportunity (pre-fills title, funder deadline, amount range, and a template checklist based on funder type) or create custom.
-- [ ] Default `internalDueAt` = funder deadline minus `DEFAULT_INTERNAL_BUFFER_BUSINESS_DAYS` (setting, default 3). Federal submission portals can be slow.
-- [ ] Checklist: add/reorder/assign/due date/complete. Link an item to a vault document (auto-completes ATTACHMENT items).
-- [ ] Moving to DECLINED prompts for funder feedback (stored for next time). Moving to AWARDED records amount and date (Phase 3 will launch the award setup wizard here).
-- [ ] Application detail shows days remaining, open checklist items, and missing packet documents.
+- [x] Kanban by status (drag-and-drop on desktop, status dropdown on mobile) plus a sortable list view.
+- [x] Create from an opportunity (pre-fills title, funder deadline, amount range, and a template checklist based on funder type) or create custom.
+- [x] Default `internalDueAt` = funder deadline minus `DEFAULT_INTERNAL_BUFFER_BUSINESS_DAYS` (setting, default 3). Federal submission portals can be slow.
+- [x] Checklist: add/reorder/assign/due date/complete. Link an item to a vault document (auto-completes ATTACHMENT items).
+- [x] Moving to DECLINED prompts for funder feedback (stored for next time). Moving to AWARDED records amount and date (Phase 3 will launch the award setup wizard here).
+- [x] Application detail shows days remaining, open checklist items, and missing packet documents.
 
 ### F9. Compliance tracker
 
-- [ ] List of compliance items with due date, recurrence, and status (OK / due soon / overdue).
-- [ ] "Mark complete" sets `lastCompletedAt` and, if `rrule` is set, rolls `dueAt` forward to the next occurrence.
-- [ ] Templates offered at org creation and on profile change (user confirms each; dates are user-entered because many depend on the org's own filings):
+- [x] List of compliance items with due date, recurrence, and status (OK / due soon / overdue).
+- [x] "Mark complete" sets `lastCompletedAt` and, if `rrule` is set, rolls `dueAt` forward to the next occurrence.
+- [x] Templates offered at org creation and on profile change (user confirms each; dates are user-entered because many depend on the org's own filings):
   - All orgs: insurance renewal, board election/annual meeting (if applicable).
   - `NONPROFIT_501C3`: IRS Form 990 (default due date computed as the 15th day of the 5th month after fiscal year end, editable), Alaska biennial corporate report (user enters date), Pick.Click.Give annual application (user enters date).
   - `receivesFederalFunds` or TRIBE/MUNICIPALITY: SAM.gov registration renewal (yearly; user enters the expiration shown in SAM.gov).
   - `SMALL_BUSINESS`: business license renewal (user enters date).
-- [ ] Each template includes a one-paragraph plain-language explanation and an official link (curator-maintained in `packages/shared/compliance-templates.ts`).
+- [x] Each template includes a one-paragraph plain-language explanation and an official link (curator-maintained in `packages/shared/compliance-templates.ts`).
 
 ### F10. Reminders & weekly digest
 
-- [ ] Reminders for: application internal due, funder deadline, checklist item due (assignee only), compliance due, document expiry, watched opportunity deadline.
-- [ ] Recipients: application owner + assignees + org ADMIN/OWNERs (compliance) by default; each user can mute per org.
-- [ ] Offsets from `NotificationPreference.reminderOffsets` (default 30/14/7/2/1 days). Email always (unless disabled). SMS only if verified phone + opted in, and only for ≤2-day reminders by default.
-- [ ] SMS respects quiet hours (shift to `quietEndHour` local time). SMS copy fits in one segment where possible:
+- [x] Reminders for: application internal due, funder deadline, checklist item due (assignee only), compliance due, document expiry, watched opportunity deadline.
+- [x] Recipients: application owner + assignees + org ADMIN/OWNERs (compliance) by default; each user can mute per org.
+- [x] Offsets from `NotificationPreference.reminderOffsets` (default 30/14/7/2/1 days). Email always (unless disabled). SMS only if verified phone + opted in, and only for ≤2-day reminders by default.
+- [x] SMS respects quiet hours (shift to `quietEndHour` local time). SMS copy fits in one segment where possible:
       `SE Grants: Rasmuson app due in 2 days (3 items left). <short link>`
-- [ ] SMS STOP/START handled via Twilio webhook (sets `smsOptIn`).
-- [ ] Phone verification by SMS code before any SMS is sent.
-- [ ] **Weekly digest email** at the user's chosen weekday/hour: across all their orgs, "Your next 3 actions," then everything due in the next 14 days, new opportunities that fit their orgs, and expiring documents. Skipped if there's nothing to say.
-- [ ] Every email has a one-click link to the exact item and a "manage notifications" link.
+- [x] SMS STOP/START handled via Twilio webhook (sets `smsOptIn`).
+- [x] Phone verification by SMS code before any SMS is sent.
+- [x] **Weekly digest email** at the user's chosen weekday/hour: across all their orgs, "Your next 3 actions," then everything due in the next 14 days, new opportunities that fit their orgs, and expiring documents. Skipped if there's nothing to say.
+- [x] Every email has a one-click link to the exact item and a "manage notifications" link.
 
 ### F11. Public site (server-rendered)
 
-- [ ] `/`: what it is, who it's for, free sign-up, newsletter signup.
-- [ ] `/grants`: published opportunities, filterable via query params (works with no JavaScript).
-- [ ] `/grants/:slug` and `/funders/:slug`: detail pages with "last verified," deadline display rule, and "Track this in your workspace" CTA.
-- [ ] `/about`, `/privacy`, `/terms`.
-- [ ] Page weight budget: ≤ 60 KB transferred (excluding images) and no required JS. Proper `<title>`, meta description, Open Graph tags, sitemap.xml, robots.txt.
-- [ ] Never render `curatorNotes` or DRAFT/unpublished records.
+- [x] `/`: what it is, who it's for, free sign-up, newsletter signup.
+- [x] `/grants`: published opportunities, filterable via query params (works with no JavaScript).
+- [x] `/grants/:slug` and `/funders/:slug`: detail pages with "last verified," deadline display rule, and "Track this in your workspace" CTA.
+- [x] `/about`, `/privacy`, `/terms`.
+- [x] Page weight budget: ≤ 60 KB transferred (excluding images) and no required JS. Proper `<title>`, meta description, Open Graph tags, sitemap.xml, robots.txt.
+- [x] Never render `curatorNotes` or DRAFT/unpublished records.
 
 ### F12. Public newsletter: "Southeast Grants Digest"
 
-- [ ] Subscribe form (email, optional communities and focus areas) with double opt-in.
-- [ ] Weekly job drafts a `DigestIssue` from opportunities published/updated in the last 7 days plus deadlines in the next 30 days, filtered later per subscriber preferences.
-- [ ] **Curator must review, edit and approve** before sending. Nothing goes out automatically.
-- [ ] Sent via Postmark broadcast stream with List-Unsubscribe headers. One-click unsubscribe.
+- [x] Subscribe form (email, optional communities and focus areas) with double opt-in.
+- [x] Weekly job drafts a `DigestIssue` from opportunities published/updated in the last 7 days plus deadlines in the next 30 days, filtered later per subscriber preferences.
+- [x] **Curator must review, edit and approve** before sending. Nothing goes out automatically.
+- [x] Sent via Postmark broadcast stream with List-Unsubscribe headers. One-click unsubscribe.
 
 ### F13. Dashboard
 
-- [ ] Org home: "Next actions" (same algorithm as the digest), upcoming deadlines (14 days), applications by status, profile/packet completeness, expiring documents.
-- [ ] Next-actions algorithm: collect open checklist items for applications due within 21 days, compliance items due within 30 days, documents expiring within 45 days, watched opportunities closing within 30 days; sort by due date, then by type priority (compliance > application > document > opportunity); show top 5.
+- [x] Org home: "Next actions" (same algorithm as the digest), upcoming deadlines (14 days), applications by status, profile/packet completeness, expiring documents.
+- [x] Next-actions algorithm: collect open checklist items for applications due within 21 days, compliance items due within 30 days, documents expiring within 45 days, watched opportunities closing within 30 days; sort by due date, then by type priority (compliance > application > document > opportunity); show top 5.
 
 ### F14. Data export & deletion
 
-- [ ] OWNER can request a full export: JSON of all org data plus all files, zipped by a background job, stored in R2, emailed as a link valid for 7 days. Audit-logged.
-- [ ] OWNER can delete the org (type the org name to confirm). Soft-delete immediately, hard-delete (including files) after 30 days.
+- [x] OWNER can request a full export: JSON of all org data plus all files, zipped by a background job, stored in R2, emailed as a link valid for 7 days. Audit-logged.
+- [x] OWNER can delete the org (type the org name to confirm). Soft-delete immediately, hard-delete (including files) after 30 days.
 
 ### F15. Curator admin
 
-- [ ] `/app/admin` (CURATOR+): funders, opportunities, verification queue, CSV import, digest issues, platform settings (SUPERADMIN only), user lookup (SUPERADMIN only, read-only).
+- [x] `/app/admin` (CURATOR+): funders, opportunities, verification queue, CSV import, digest issues, platform settings (SUPERADMIN only), user lookup (SUPERADMIN only, read-only).
 
 ---
 
@@ -1289,7 +1289,7 @@ Each milestone ends with: typecheck + lint + tests passing, deployed to a Railwa
 
 - [ ] Twilio A2P 10DLC registration approved.
 - [ ] Postmark sender domain verified (SPF, DKIM, DMARC).
-- [ ] Privacy policy and terms published (including AI processing disclosure before Phase 2).
+- [x] Privacy policy and terms published (including AI processing disclosure before Phase 2).
 - [ ] Every published funder/opportunity verified by the curator; platform settings verified.
 - [ ] Backup restore drill completed.
 - [ ] 2–3 pilot orgs onboarded with real deadlines and documents.

@@ -42,6 +42,9 @@ export class ApiExceptionFilter implements ExceptionFilter {
         message = body;
       } else if (isRecord(body) && typeof body.message === "string") {
         message = body.message;
+        if (body.details !== undefined) {
+          details = body.details;
+        }
       } else if (isRecord(body) && Array.isArray(body.message)) {
         message = "Some fields need another look.";
         details = body.message;
