@@ -54,6 +54,15 @@ export class ExportService {
       watches,
       reminders,
       audits,
+      awards,
+      budgetLines,
+      expenditures,
+      reimbursements,
+      matchEntries,
+      reports,
+      metrics,
+      metricEntries,
+      interactions,
     ] = await Promise.all([
       this.prisma.db.membership.findMany({
         where: { organizationId: orgId },
@@ -70,6 +79,17 @@ export class ExportService {
       this.prisma.db.opportunityWatch.findMany({ where: { organizationId: orgId } }),
       this.prisma.db.reminder.findMany({ where: { organizationId: orgId } }),
       this.prisma.db.auditLog.findMany({ where: { organizationId: orgId } }),
+      this.prisma.db.award.findMany({ where: { organizationId: orgId } }),
+      this.prisma.db.budgetLine.findMany({ where: { award: { organizationId: orgId } } }),
+      this.prisma.db.expenditure.findMany({ where: { award: { organizationId: orgId } } }),
+      this.prisma.db.reimbursementRequest.findMany({ where: { award: { organizationId: orgId } } }),
+      this.prisma.db.matchEntry.findMany({ where: { organizationId: orgId } }),
+      this.prisma.db.reportRequirement.findMany({ where: { award: { organizationId: orgId } } }),
+      this.prisma.db.metric.findMany({ where: { award: { organizationId: orgId } } }),
+      this.prisma.db.metricEntry.findMany({
+        where: { metric: { award: { organizationId: orgId } } },
+      }),
+      this.prisma.db.funderInteraction.findMany({ where: { organizationId: orgId } }),
     ]);
     const payload = {
       organization: { ...org, annualBudget: moneyOut(org.annualBudget) },
@@ -95,6 +115,46 @@ export class ExportService {
       watches,
       reminders,
       auditLogs: audits,
+      awards: awards.map((row) => ({
+        ...row,
+        amount: moneyOut(row.amount),
+        matchRequiredAmount: moneyOut(row.matchRequiredAmount),
+        startDate: dateOnlyOut(row.startDate),
+        endDate: dateOnlyOut(row.endDate),
+      })),
+      budgetLines: budgetLines.map((row) => ({ ...row, budgeted: moneyOut(row.budgeted) })),
+      expenditures: expenditures.map((row) => ({
+        ...row,
+        amount: moneyOut(row.amount),
+        date: dateOnlyOut(row.date),
+      })),
+      reimbursements: reimbursements.map((row) => ({
+        ...row,
+        amount: moneyOut(row.amount),
+        periodStart: dateOnlyOut(row.periodStart),
+        periodEnd: dateOnlyOut(row.periodEnd),
+      })),
+      matchEntries: matchEntries.map((row) => ({
+        ...row,
+        hours: moneyOut(row.hours),
+        inKindValue: moneyOut(row.inKindValue),
+        rate: moneyOut(row.rate),
+        lat: row.lat ? row.lat.toString() : null,
+        lng: row.lng ? row.lng.toString() : null,
+        date: dateOnlyOut(row.date),
+      })),
+      reports: reports.map((row) => ({
+        ...row,
+        periodStart: dateOnlyOut(row.periodStart),
+        periodEnd: dateOnlyOut(row.periodEnd),
+      })),
+      metrics: metrics.map((row) => ({ ...row, target: moneyOut(row.target) })),
+      metricEntries: metricEntries.map((row) => ({
+        ...row,
+        value: moneyOut(row.value),
+        date: dateOnlyOut(row.date),
+      })),
+      interactions: interactions.map((row) => ({ ...row, date: dateOnlyOut(row.date) })),
     };
     const archive = archiver("zip", { zlib: { level: 9 } });
     const chunks: Buffer[] = [];

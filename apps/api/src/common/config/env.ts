@@ -37,6 +37,8 @@ export const envSchema = z.object({
   AI_MODEL_DEFAULT: z.preprocess(blankToUndefined, z.string().min(1).default("claude-sonnet-5-5")),
   STRIPE_SECRET_KEY: optionalText,
   STRIPE_WEBHOOK_SECRET: optionalText,
+  // SPEC-QUESTION: the Pro price is an open question, so it is an env price id, not a hardcoded amount.
+  STRIPE_PRICE_PRO: optionalText,
   SENTRY_DSN: optionalUrl,
 });
 

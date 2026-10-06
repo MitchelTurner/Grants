@@ -2,6 +2,23 @@
 
 Running log of choices made where the spec was silent, or where a dependency constraint forced a narrower option. Newest first.
 
+## 2026-10-06 — Phase 3 money tools
+
+Phase 3 is in the app. Phase 4 is not. Awards, budgets, receipts, reimbursement forecasts, match logs, report drafts, the funder log, the Single Audit display, and Stripe Checkout plus the Customer Portal are wired. Sponsored seats, the funder portal, and the regional dashboard stay out.
+
+- Marking an application awarded does not insert an award. A person saves the award on the setup screen, and the application must already be awarded.
+- A reimbursement request uses the amount the person types. Receipts already on a request cannot be attached again.
+- Generating a report writes a plain-text draft into the vault as a grant report. It does not mark the report submitted.
+- The volunteer hour rate is the platform setting `VOLUNTEER_HOUR_RATE_USD`. If that value is empty, hours can be logged without a dollar amount. The Independent Sector figure is not invented here.
+- A match `clientId` is unique. Sending it again for the same organization returns the existing row. Photos must already be in the vault. The match screen keeps a log on the device when the connection is down and sends it when the device is back online.
+- The Single Audit tracker reads `SINGLE_AUDIT_THRESHOLD_USD`, seeded at `1000000`. If that row is missing or not a money string, the same seeded figure is used. The tracker does not create a compliance item.
+- Cash-flow forecasting covers reimbursement and mixed awards. An award paid up front says so. "Not yet requested" is spending with no reimbursement request. Awaiting is a submitted request and the date the person expects to be paid.
+- Report due dates remind owners and admins. Funder follow-ups remind editors. A submitted report clears its reminder.
+- The Pro price is still an open question, so checkout uses the Stripe Price id in `STRIPE_PRICE_PRO`. No dollar amount is hardcoded. A missing price with a real Stripe key returns "Pro billing is not configured yet." Sponsored organizations cannot start a Pro checkout, and a cancellation notice does not remove a sponsored seat.
+- `Organization.stripeSubscriptionId` is stored so a cancellation notice can return a Pro organization to Free. Card numbers are not stored.
+- Tests and any boot without `STRIPE_SECRET_KEY` use an in-memory billing provider. A checkout link is not proof of payment. The plan changes when a signed `checkout.session.completed` or `checkout.session.async_payment_succeeded` notice arrives with payment status `paid` or `no_payment_required`. A deleted, canceled, unpaid, or incomplete-expired subscription returns Pro to Free.
+- The installed Stripe SDK's default API version is used. Checkout is a subscription, with no `payment_method_types` and no `automatic_tax`.
+
 ## 2026-10-06 — Phase 2 writing tools
 
 Phase 2 is in the app. Phase 3 and Phase 4 are not. The assistant is `@anthropic-ai/sdk` `messages.parse` with `zodOutputFormat`, matching the spec. Tests and any boot without `ANTHROPIC_API_KEY` use an in-memory fake. The model id is `AI_MODEL_DEFAULT`.

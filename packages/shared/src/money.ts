@@ -20,3 +20,18 @@ export function formatMoney(value: string | null | undefined): string {
 export function compareMoney(left: string, right: string): number {
   return new Decimal(left).comparedTo(new Decimal(right));
 }
+
+export function addMoney(values: Array<string | null | undefined>): string {
+  return values
+    .reduce((sum, value) => (value ? sum.plus(value) : sum), new Decimal(0))
+    .toFixed(2);
+}
+
+export function multiplyMoney(left: string, right: string): string {
+  return new Decimal(left).times(right).toFixed(2);
+}
+
+export function subtractMoney(left: string, right: string): string {
+  const gap = new Decimal(left).minus(right);
+  return gap.isNegative() ? "0.00" : gap.toFixed(2);
+}

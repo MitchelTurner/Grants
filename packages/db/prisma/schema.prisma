@@ -61,6 +61,7 @@ enum DocumentKind {
   LOGO
   PHOTO
   RECEIPT
+  GRANT_REPORT
   OTHER
 }
 
@@ -164,6 +165,8 @@ enum ReminderTarget {
   CHECKLIST_ITEM
   COMPLIANCE_ITEM
   DOCUMENT_EXPIRY
+  REPORT_DUE
+  FUNDER_FOLLOW_UP
 }
 
 enum Channel {
@@ -205,6 +208,51 @@ enum SupportLetterStatus {
   DECLINED
 }
 
+enum PaymentType {
+  ADVANCE
+  REIMBURSEMENT
+  MIXED
+}
+
+enum BudgetCategory {
+  PERSONNEL
+  FRINGE
+  TRAVEL
+  FREIGHT
+  EQUIPMENT
+  SUPPLIES
+  CONTRACTUAL
+  CONSTRUCTION
+  OTHER
+  INDIRECT
+}
+
+enum ReimbursementStatus {
+  DRAFT
+  SUBMITTED
+  PAID
+  CANCELED
+}
+
+enum ReportKind {
+  PROGRESS
+  FINANCIAL
+  FINAL
+  OTHER
+}
+
+enum ReportStatus {
+  OPEN
+  SUBMITTED
+}
+
+enum InteractionType {
+  CALL
+  EMAIL
+  MEETING
+  SITE_VISIT
+}
+
 // ───────────── Identity ─────────────
 
 model User {
@@ -229,6 +277,7 @@ model User {
   aiUsage          AiUsage[]
   packetShares     PacketShare[]
   supportLetters   SupportLetterRequest[]
+  matchEntries     MatchEntry[]
 }
 
 model Session {
@@ -293,6 +342,8 @@ model Organization {
   timezone             String    @default("America/Juneau")
   plan                 Plan      @default(FREE)
   stripeCustomerId     String?   @unique
+  // SPEC-QUESTION: the subscription id lets a cancellation webhook return the org to Free.
+  stripeSubscriptionId String?   @unique
   aggregateDataConsent Boolean   @default(false) // opt-in for anonymized regional stats (Phase 4)
   createdAt            DateTime  @default(now())
   updatedAt            DateTime  @updatedAt
@@ -309,7 +360,10 @@ model Organization {
   auditLogs     AuditLog[]
   rfpParses     RfpParse[]
   aiUsage       AiUsage[]
-  packetShares  PacketShare[]
+  packetShares       PacketShare[]
+  awards             Award[]
+  matchEntries       MatchEntry[]
+  funderInteractions FunderInteraction[]
 }
 
 model Membership {
@@ -421,6 +475,7 @@ model Funder {
   updatedAt        DateTime      @updatedAt
   opportunities Opportunity[]
   pastAwards    PastAward[]
+  interactions  FunderInteraction[]
 }
 
 model Opportunity {
@@ -499,6 +554,7 @@ model Application {
   sections         ApplicationSection[]
   rfpParses        RfpParse[]
   supportLetters   SupportLetterRequest[]
+  award            Award?
 
   @@index([organizationId, status])
 }
@@ -741,4 +797,162 @@ model PastAward {
   funder         Funder   @relation(fields: [funderId], references: [id], onDelete: Cascade)
 
   @@index([funderId, year])
+}
+
+// ───────────── Phase 3: awards and billing ─────────────
+
+model Award {
+  id                  String      @id @default(cuid())
+  organizationId      String
+  applicationId       String      @unique
+  amount              Decimal     @db.Decimal(14, 2)
+  startDate           DateTime    @db.Date
+  endDate             DateTime    @db.Date
+  paymentType         PaymentType
+  isFederal           Boolean     @default(false)
+  assistanceListing   String?
+  matchRequiredAmount Decimal?    @db.Decimal(14, 2)
+  restrictions        String?
+  agreementDocumentId String?
+  createdAt           DateTime    @default(now())
+  updatedAt           DateTime    @updatedAt
+  organization        Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  application         Application  @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  budgetLines         BudgetLine[]
+  expenditures        Expenditure[]
+  reimbursements      ReimbursementRequest[]
+  matchEntries        MatchEntry[]
+  reports             ReportRequirement[]
+  metrics             Metric[]
+
+  @@index([organizationId])
+}
+
+model BudgetLine {
+  id           String         @id @default(cuid())
+  awardId      String
+  category     BudgetCategory
+  description  String
+  budgeted     Decimal        @db.Decimal(14, 2)
+  isMatch      Boolean        @default(false)
+  award        Award          @relation(fields: [awardId], references: [id], onDelete: Cascade)
+  expenditures Expenditure[]
+
+  @@index([awardId])
+}
+
+model Expenditure {
+  id                     String                @id @default(cuid())
+  awardId                String
+  budgetLineId           String
+  date                   DateTime              @db.Date
+  amount                 Decimal               @db.Decimal(14, 2)
+  vendor                 String
+  description            String
+  receiptDocumentId      String?
+  reimbursementRequestId String?
+  createdAt              DateTime              @default(now())
+  award                  Award                 @relation(fields: [awardId], references: [id], onDelete: Cascade)
+  budgetLine             BudgetLine            @relation(fields: [budgetLineId], references: [id], onDelete: Restrict)
+  reimbursement          ReimbursementRequest? @relation(fields: [reimbursementRequestId], references: [id], onDelete: SetNull)
+
+  @@index([awardId, date])
+}
+
+model ReimbursementRequest {
+  id             String              @id @default(cuid())
+  awardId        String
+  periodStart    DateTime            @db.Date
+  periodEnd      DateTime            @db.Date
+  amount         Decimal             @db.Decimal(14, 2)
+  submittedAt    DateTime?
+  expectedPaidAt DateTime?
+  paidAt         DateTime?
+  status         ReimbursementStatus @default(DRAFT)
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+  award          Award               @relation(fields: [awardId], references: [id], onDelete: Cascade)
+  expenditures   Expenditure[]
+
+  @@index([awardId])
+}
+
+model MatchEntry {
+  id               String    @id @default(cuid())
+  organizationId   String
+  awardId          String?
+  userId           String?
+  volunteerName    String
+  date             DateTime  @db.Date
+  hours            Decimal?  @db.Decimal(8, 2)
+  inKindValue      Decimal?  @db.Decimal(14, 2)
+  rate             Decimal?  @db.Decimal(8, 2)
+  description      String
+  photoDocumentIds String[]
+  lat              Decimal?  @db.Decimal(9, 6)
+  lng              Decimal?  @db.Decimal(9, 6)
+  clientId         String    @unique
+  createdAt        DateTime  @default(now())
+  organization     Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  award            Award?       @relation(fields: [awardId], references: [id], onDelete: SetNull)
+  user             User?        @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, date])
+}
+
+model ReportRequirement {
+  id                  String       @id @default(cuid())
+  awardId             String
+  kind                ReportKind
+  dueAt               DateTime
+  periodStart         DateTime     @db.Date
+  periodEnd           DateTime     @db.Date
+  status              ReportStatus @default(OPEN)
+  submittedAt         DateTime?
+  generatedDocumentId String?
+  createdAt           DateTime     @default(now())
+  updatedAt           DateTime     @updatedAt
+  award               Award        @relation(fields: [awardId], references: [id], onDelete: Cascade)
+
+  @@index([awardId, dueAt])
+}
+
+model Metric {
+  id      String        @id @default(cuid())
+  awardId String
+  name    String
+  target  Decimal       @db.Decimal(14, 2)
+  unit    String
+  award   Award         @relation(fields: [awardId], references: [id], onDelete: Cascade)
+  entries MetricEntry[]
+
+  @@index([awardId])
+}
+
+model MetricEntry {
+  id       String   @id @default(cuid())
+  metricId String
+  value    Decimal  @db.Decimal(14, 2)
+  date     DateTime @db.Date
+  note     String   @default("")
+  metric   Metric   @relation(fields: [metricId], references: [id], onDelete: Cascade)
+
+  @@index([metricId, date])
+}
+
+model FunderInteraction {
+  id             String          @id @default(cuid())
+  organizationId String
+  funderId       String?
+  contactName    String
+  contactEmail   String?
+  date           DateTime        @db.Date
+  type           InteractionType
+  summary        String
+  followUpAt     DateTime?
+  createdAt      DateTime        @default(now())
+  organization   Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  funder         Funder?         @relation(fields: [funderId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, date])
 }

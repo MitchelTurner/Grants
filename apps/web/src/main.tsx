@@ -69,6 +69,16 @@ const RfpReviewPage = lazy(() =>
 const DataPackPage = lazy(() =>
   import("./pages/data").then((mod) => ({ default: mod.DataPackPage })),
 );
+const AwardsPage = lazy(() =>
+  import("./pages/awards").then((mod) => ({ default: mod.AwardsPage })),
+);
+const AwardDetailPage = lazy(() =>
+  import("./pages/awards").then((mod) => ({ default: mod.AwardDetailPage })),
+);
+const MatchPage = lazy(() => import("./pages/match").then((mod) => ({ default: mod.MatchPage })));
+const RelationshipsPage = lazy(() =>
+  import("./pages/relationships").then((mod) => ({ default: mod.RelationshipsPage })),
+);
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: 1, refetchOnWindowFocus: false } },
@@ -163,6 +173,38 @@ createRoot(root).render(
                 element={
                   <OrgLayout>
                     <DataPackPage />
+                  </OrgLayout>
+                }
+              />
+              <Route
+                path="/o/:orgSlug/awards"
+                element={
+                  <OrgLayout>
+                    <AwardsPage />
+                  </OrgLayout>
+                }
+              />
+              <Route
+                path="/o/:orgSlug/awards/:awardId"
+                element={
+                  <OrgLayout>
+                    <AwardDetailPage />
+                  </OrgLayout>
+                }
+              />
+              <Route
+                path="/o/:orgSlug/match"
+                element={
+                  <OrgLayout>
+                    <MatchPage />
+                  </OrgLayout>
+                }
+              />
+              <Route
+                path="/o/:orgSlug/relationships"
+                element={
+                  <OrgLayout>
+                    <RelationshipsPage />
                   </OrgLayout>
                 }
               />

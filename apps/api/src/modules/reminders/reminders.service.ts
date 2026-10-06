@@ -159,6 +159,50 @@ export class RemindersService {
     });
   }
 
+  async syncReport(reportId: string): Promise<void> {
+    const report = await this.prisma.db.reportRequirement.findUnique({
+      where: { id: reportId },
+      include: { award: { include: { organization: true, application: true } } },
+    });
+    if (!report || report.status === "SUBMITTED") {
+      await this.clear("REPORT_DUE", reportId);
+      return;
+    }
+    await this.replace({
+      organizationId: report.award.organizationId,
+      targetType: "REPORT_DUE",
+      targetId: report.id,
+      due: report.dueAt,
+      offsets: null,
+      recipients: await this.leaders(report.award.organizationId),
+      title: `${report.award.application.title} report`,
+      linkPath: `/app/o/${report.award.organization.slug}/awards/${report.awardId}`,
+      itemsLeft: null,
+    });
+  }
+
+  async syncFollowUp(interactionId: string): Promise<void> {
+    const row = await this.prisma.db.funderInteraction.findUnique({
+      where: { id: interactionId },
+      include: { organization: true },
+    });
+    if (!row?.followUpAt) {
+      await this.clear("FUNDER_FOLLOW_UP", interactionId);
+      return;
+    }
+    await this.replace({
+      organizationId: row.organizationId,
+      targetType: "FUNDER_FOLLOW_UP",
+      targetId: row.id,
+      due: row.followUpAt,
+      offsets: null,
+      recipients: await this.editors(row.organizationId),
+      title: `Follow up with ${row.contactName}`,
+      linkPath: `/app/o/${row.organization.slug}/relationships`,
+      itemsLeft: null,
+    });
+  }
+
   async syncWatch(organizationId: string, opportunityId: string): Promise<void> {
     const watch = await this.prisma.db.opportunityWatch.findUnique({
       where: { organizationId_opportunityId: { organizationId, opportunityId } },
@@ -478,6 +522,8 @@ export class RemindersService {
       const title = row?.title ?? "Application";
       return targetId.endsWith(":internal") ? `${title} (internal)` : title;
     }
+    if (targetType === "REPORT_DUE") return "Funder report";
+    if (targetType === "FUNDER_FOLLOW_UP") return "Funder follow-up";
     const opportunityId = targetId.split(":")[1];
     const row = opportunityId
       ? await this.prisma.db.opportunity.findUnique({ where: { id: opportunityId } })
@@ -500,6 +546,8 @@ export class RemindersService {
       const id = targetId.endsWith(":internal") ? targetId.slice(0, -":internal".length) : targetId;
       return `/app/o/${slug}/applications/${id}`;
     }
+    if (targetType === "REPORT_DUE") return `/app/o/${slug}/awards`;
+    if (targetType === "FUNDER_FOLLOW_UP") return `/app/o/${slug}/relationships`;
     const opportunityId = targetId.split(":")[1];
     const row = opportunityId
       ? await this.prisma.db.opportunity.findUnique({ where: { id: opportunityId } })

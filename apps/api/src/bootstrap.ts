@@ -22,7 +22,7 @@ import {
 import { HealthService } from "./modules/health/health.service";
 
 export async function createApp(): Promise<INestApplication> {
-  const app = await NestFactory.create(AppModule, { bufferLogs: true });
+  const app = await NestFactory.create(AppModule, { bufferLogs: true, rawBody: true });
   app.useLogger(app.get(Logger));
   const http = app.getHttpAdapter().getInstance() as express.Express;
   http.set("trust proxy", 1);

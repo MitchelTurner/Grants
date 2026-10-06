@@ -9,10 +9,12 @@ import {
 } from "@se-grants/shared";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState, type FormEvent } from "react";
+import { useSearchParams } from "react-router";
 import { useAuth, useOrg } from "../auth";
 import { canAdmin, canEdit, isOwner } from "../components/shell";
 import { Button, Field, Notice, Page, controlClass } from "../components/ui";
 import { api } from "../lib/api";
+import { messageFrom, planLabel } from "../lib/money-labels";
 
 type Profile = {
   id: string;
@@ -54,7 +56,9 @@ export function SettingsPage() {
   const { me, refresh } = useAuth();
   const queryClient = useQueryClient();
   const [error, setError] = useState<string | null>(null);
+  const [search] = useSearchParams();
   const [confirmName, setConfirmName] = useState("");
+  const [billingNote, setBillingNote] = useState(search.get("billing") === "return");
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState<MemberRole>("EDITOR");
   const profile = useQuery({
@@ -363,6 +367,9 @@ export function SettingsPage() {
           </li>
         ))}
       </ul>
+      {canAdmin(org.role) ? (
+        <BillingSection orgId={org.id} cameBack={billingNote} onNote={() => setBillingNote(true)} />
+      ) : null}
       {isOwner(org.role) ? (
         <section className="mt-8">
           <h2 className="text-lg font-semibold">Export</h2>
@@ -405,5 +412,71 @@ export function SettingsPage() {
         </section>
       ) : null}
     </Page>
+  );
+}
+
+function BillingSection({
+  orgId,
+  cameBack,
+  onNote,
+}: {
+  orgId: string;
+  cameBack: boolean;
+  onNote: () => void;
+}) {
+  const queryClient = useQueryClient();
+  const [error, setError] = useState<string | null>(null);
+  const billing = useQuery({
+    queryKey: ["billing", orgId],
+    queryFn: () =>
+      api<{ plan: string; checkoutReady: boolean; portalReady: boolean }>(`/orgs/${orgId}/billing`),
+  });
+  const plan = billing.data?.plan ?? "FREE";
+
+  async function openStripe(path: "checkout" | "portal") {
+    setError(null);
+    try {
+      const session = await api<{ url: string }>(`/orgs/${orgId}/billing/${path}`, {
+        method: "POST",
+      });
+      const next = new URL(session.url);
+      if (next.hostname === "checkout.stripe.com" || next.hostname === "billing.stripe.com") {
+        window.location.assign(session.url);
+        return;
+      }
+      onNote();
+      await queryClient.invalidateQueries({ queryKey: ["billing", orgId] });
+    } catch (caught) {
+      setError(messageFrom(caught));
+    }
+  }
+
+  return (
+    <section className="mt-8">
+      <h2 className="text-lg font-semibold">Billing</h2>
+      <p className="mt-1 text-sm">This organization is on {planLabel(plan)}.</p>
+      <p className="mt-1 text-sm text-ink-soft">
+        Card numbers are not stored here. Stripe holds payment details. Coming back to this page
+        does not charge a card.
+      </p>
+      {cameBack ? (
+        <Notice>
+          You are back from checkout. The plan changes only after Stripe confirms the payment.
+        </Notice>
+      ) : null}
+      {error ? <Notice>{error}</Notice> : null}
+      {plan === "SPONSORED" ? (
+        <p className="mt-2 text-sm">This organization has a sponsored seat.</p>
+      ) : null}
+      {plan === "FREE" && billing.data?.checkoutReady ? (
+        <Button onClick={() => void openStripe("checkout")}>Continue to Pro checkout</Button>
+      ) : null}
+      {plan === "FREE" && billing.data && !billing.data.checkoutReady ? (
+        <p className="mt-2 text-sm">Pro billing is not configured yet.</p>
+      ) : null}
+      {plan === "PRO" ? (
+        <Button onClick={() => void openStripe("portal")}>Manage billing</Button>
+      ) : null}
+    </section>
   );
 }

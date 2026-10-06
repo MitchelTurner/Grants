@@ -249,6 +249,35 @@ function StatusControl({
   );
 }
 
+function AwardSetupLink({
+  orgId,
+  slug,
+  applicationId,
+}: {
+  orgId: string;
+  slug: string;
+  applicationId: string;
+}) {
+  const awards = useQuery({
+    queryKey: ["awards", orgId],
+    queryFn: () => api<{ items: { id: string; applicationId: string }[] }>(`/orgs/${orgId}/awards`),
+  });
+  const existing = awards.data?.items.find((award) => award.applicationId === applicationId);
+  return (
+    <p className="mt-3 text-sm">
+      <Link
+        to={
+          existing
+            ? `/o/${slug}/awards/${existing.id}`
+            : `/o/${slug}/awards?application=${applicationId}`
+        }
+      >
+        {existing ? "Open this award" : "Set up this award"}
+      </Link>
+    </p>
+  );
+}
+
 export function ApplicationDetailPage() {
   const org = useOrg();
   const { id = "" } = useParams();
@@ -353,6 +382,13 @@ export function ApplicationDetailPage() {
               });
             }}
           />
+          {item.status === "AWARDED" ? (
+            <AwardSetupLink
+              orgId={organization.id}
+              slug={organization.slug}
+              applicationId={item.id}
+            />
+          ) : null}
           <h2 className="mt-6 text-lg font-semibold">Checklist</h2>
           <ul className="mt-3 space-y-3">
             {item.checklist.map((row, index) => (

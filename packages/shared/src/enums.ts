@@ -32,6 +32,7 @@ export const DOCUMENT_KINDS = [
   "LOGO",
   "PHOTO",
   "RECEIPT",
+  "GRANT_REPORT",
   "OTHER",
 ] as const;
 export const CONTENT_CATEGORIES = [
@@ -169,6 +170,7 @@ const DOCUMENT_KIND_LABELS: Record<DocumentKind, string> = {
   LOGO: "Logo",
   PHOTO: "Photo",
   RECEIPT: "Receipt",
+  GRANT_REPORT: "Grant report",
   OTHER: "Other",
 };
 

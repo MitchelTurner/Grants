@@ -8,7 +8,14 @@ import { MailModule } from "../common/mail/mail.module";
 import { SmsModule } from "../common/sms/sms.module";
 import { StorageModule } from "../common/storage/storage.module";
 import { AI, AnthropicAiProvider, MemoryAiProvider } from "../common/ai/ai.provider";
+import {
+  BILLING,
+  MemoryBillingProvider,
+  StripeBillingProvider,
+} from "../common/billing/billing.provider";
 import { WriteService } from "./ai/write.service";
+import { AwardsService } from "./awards/awards.service";
+import { BillingService } from "./billing/billing.service";
 import { ApplicationsService } from "./applications/applications.service";
 import { AuthService } from "./auth/auth.service";
 import { CalendarService } from "./calendar/calendar.service";
@@ -26,6 +33,12 @@ import {
   TestMailboxController,
   WebhooksController,
 } from "./http/directory.controller";
+import {
+  AwardsController,
+  BillingController,
+  InteractionsController,
+  MatchesController,
+} from "./http/money.controller";
 import {
   PastAwardReadController,
   PublicWriteController,
@@ -87,6 +100,10 @@ import { RemindersService } from "./reminders/reminders.service";
     PastAwardReadController,
     WriteAdminController,
     PublicWriteController,
+    AwardsController,
+    MatchesController,
+    InteractionsController,
+    BillingController,
   ],
   providers: [
     SessionService,
@@ -108,6 +125,18 @@ import { RemindersService } from "./reminders/reminders.service";
     ExportService,
     PublicSiteService,
     WriteService,
+    AwardsService,
+    BillingService,
+    {
+      provide: BILLING,
+      inject: [ENV],
+      useFactory: (env: Env) => {
+        if (env.NODE_ENV === "test" || !env.STRIPE_SECRET_KEY) {
+          return new MemoryBillingProvider(env);
+        }
+        return new StripeBillingProvider(env);
+      },
+    },
     {
       provide: AI,
       inject: [ENV],

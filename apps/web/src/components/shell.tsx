@@ -71,7 +71,7 @@ export function OrgShell({ children }: { children: ReactNode }) {
               ))}
             </select>
           </label>
-          <nav className="hidden flex-1 gap-1 md:flex" aria-label="Organization">
+          <nav className="hidden flex-1 flex-wrap gap-1 md:flex" aria-label="Organization">
             <NavLink to={base} end className={linkClass}>
               Home
             </NavLink>
@@ -80,6 +80,9 @@ export function OrgShell({ children }: { children: ReactNode }) {
             </NavLink>
             <NavLink to={`${base}/applications`} className={linkClass}>
               Applications
+            </NavLink>
+            <NavLink to={`${base}/awards`} className={linkClass}>
+              Awards
             </NavLink>
             <NavLink to={`${base}/calendar`} className={linkClass}>
               Calendar

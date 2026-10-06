@@ -183,7 +183,7 @@ export class PublicSiteService {
     return this.page(
       "Privacy · Southeast Grants",
       "How Southeast Grants handles organization data.",
-      `<h1>Privacy</h1><p>Your organization owns its documents, writing, and applications. Owners can export everything or delete the organization. We do not use one organization's files to help another unless that organization opts in.</p><p>AI features run only when someone clicks an AI action. The document or draft is sent to Anthropic for that action. A person reviews the result before it is saved. Nothing the assistant writes is filed as a deadline, checklist item, or submitted answer on its own.</p><p>Sign-in emails contain a link and a short code. We store only a hash of the session token.</p>`,
+      `<h1>Privacy</h1><p>Your organization owns its documents, writing, and applications. Owners can export everything or delete the organization. We do not use one organization's files to help another unless that organization opts in.</p><p>AI features run only when someone clicks an AI action. The document or draft is sent to Anthropic for that action. A person reviews the result before it is saved. Nothing the assistant writes is filed as a deadline, checklist item, or submitted answer on its own.</p><p>Sign-in emails contain a link and a short code. We store only a hash of the session token.</p><p>Card numbers are not stored here. Stripe holds payment details when an organization pays for Pro.</p>`,
     );
   }
 

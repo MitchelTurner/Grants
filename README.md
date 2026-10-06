@@ -2,7 +2,7 @@
 
 A Southeast Alaska–first grants workspace. The product spec is [`docs/SPEC.md`](docs/SPEC.md). Choices that the spec does not pin down are in [`docs/DECISIONS.md`](docs/DECISIONS.md).
 
-Phase 1 and Phase 2 are in place. Phase 1 covers passwordless sign-in, organizations, documents, writing, the directory, applications, compliance, reminders, a public site, and curator tools. Phase 2 adds RFP reading with a human review step, AI drafts, a criteria check, a curator-managed data pack, a public eligibility quiz, letters of support, packet share links, and past awards. Awards, budgets, and billing stay in later phases. See the launch checklist in the spec for accounts this repo cannot finish (Twilio, Postmark, production backups, pilot organizations).
+Phase 1, Phase 2, and Phase 3 are in place. Phase 1 covers passwordless sign-in, organizations, documents, writing, the directory, applications, compliance, reminders, a public site, and curator tools. Phase 2 adds RFP reading with a human review step, AI drafts, a criteria check, a curator-managed data pack, a public eligibility quiz, letters of support, packet share links, and past awards. Phase 3 adds awards and budgets, receipts, a reimbursement forecast, offline match logging, report drafts, a funder log, a Single Audit display, and Stripe Checkout with the Customer Portal. Phase 4 is not built. See the launch checklist in the spec for accounts this repo cannot finish (Twilio, Postmark, production backups, pilot organizations).
 
 ## What you need
 

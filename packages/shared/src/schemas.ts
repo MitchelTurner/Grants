@@ -408,6 +408,106 @@ export const FitSchema = z.object({
   text: z.string(),
 });
 
+const DateOnlyField = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
+
+export const AwardBody = z.object({
+  applicationId: z.string().min(1),
+  amount: MoneyString,
+  startDate: DateOnlyField,
+  endDate: DateOnlyField,
+  paymentType: z.enum(["ADVANCE", "REIMBURSEMENT", "MIXED"]),
+  isFederal: z.boolean(),
+  assistanceListing: z.string().trim().max(40).nullable(),
+  matchRequiredAmount: MoneyString.nullable(),
+  restrictions: z.string().trim().max(4000).nullable(),
+  agreementDocumentId: z.string().min(1).nullable(),
+});
+
+export const BudgetLineBody = z.object({
+  category: z.enum([
+    "PERSONNEL",
+    "FRINGE",
+    "TRAVEL",
+    "FREIGHT",
+    "EQUIPMENT",
+    "SUPPLIES",
+    "CONTRACTUAL",
+    "CONSTRUCTION",
+    "OTHER",
+    "INDIRECT",
+  ]),
+  description: z.string().trim().min(1).max(300),
+  budgeted: MoneyString,
+  isMatch: z.boolean(),
+});
+
+export const ExpenditureBody = z.object({
+  budgetLineId: z.string().min(1),
+  date: DateOnlyField,
+  amount: MoneyString,
+  vendor: z.string().trim().min(1).max(200),
+  description: z.string().trim().min(1).max(500),
+  receiptDocumentId: z.string().min(1).nullable(),
+});
+
+export const ReimbursementBody = z.object({
+  periodStart: DateOnlyField,
+  periodEnd: DateOnlyField,
+  amount: MoneyString,
+  status: z.enum(["DRAFT", "SUBMITTED", "PAID", "CANCELED"]),
+  expectedPaidAt: z.string().datetime().nullable(),
+  expenditureIds: z.array(z.string().min(1)).max(100),
+});
+
+export const ReportBody = z.object({
+  kind: z.enum(["PROGRESS", "FINANCIAL", "FINAL", "OTHER"]),
+  dueAt: z.string().datetime(),
+  periodStart: DateOnlyField,
+  periodEnd: DateOnlyField,
+});
+
+export const MetricBody = z.object({
+  name: z.string().trim().min(1).max(200),
+  target: z.string().regex(/^\d+(\.\d{1,2})?$/),
+  unit: z.string().trim().min(1).max(40),
+});
+
+export const MetricEntryBody = z.object({
+  value: z.string().regex(/^\d+(\.\d{1,2})?$/),
+  date: DateOnlyField,
+  note: z.string().trim().max(500),
+});
+
+export const MatchEntryBody = z.object({
+  awardId: z.string().min(1).nullable(),
+  volunteerName: z.string().trim().min(1).max(200),
+  date: DateOnlyField,
+  hours: z
+    .string()
+    .regex(/^\d+(\.\d{1,2})?$/)
+    .nullable(),
+  inKindValue: MoneyString.nullable(),
+  rate: z
+    .string()
+    .regex(/^\d+(\.\d{1,2})?$/)
+    .nullable(),
+  description: z.string().trim().min(1).max(1000),
+  photoDocumentIds: z.array(z.string().min(1)).max(8),
+  lat: z.number().min(-90).max(90).nullable(),
+  lng: z.number().min(-180).max(180).nullable(),
+  clientId: z.string().trim().min(8).max(80),
+});
+
+export const InteractionBody = z.object({
+  funderId: z.string().min(1).nullable(),
+  contactName: z.string().trim().min(1).max(200),
+  contactEmail: z.string().email().nullable(),
+  date: DateOnlyField,
+  type: z.enum(["CALL", "EMAIL", "MEETING", "SITE_VISIT"]),
+  summary: z.string().trim().min(1).max(4000),
+  followUpAt: z.string().datetime().nullable(),
+});
+
 export const DeadlineSchema = z.object({
   at: z.string().nullable(),
   primary: z.string().nullable(),

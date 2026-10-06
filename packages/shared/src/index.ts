@@ -1,3 +1,12 @@
+export { dateInRange, fiscalYearContaining, todayDate } from "./fiscal";
+export {
+  addMoney,
+  compareMoney,
+  formatMoney,
+  isMoneyString,
+  multiplyMoney,
+  subtractMoney,
+} from "./money";
 export { fieldAccuracy } from "./ai/accuracy";
 export type { AccuracyReport } from "./ai/accuracy";
 export { coverageLabel, CriteriaReview, COVERAGE } from "./ai/criteria";
@@ -80,7 +89,6 @@ export type {
 } from "./enums";
 export { fitLabelText, scoreFit } from "./fit";
 export type { FitInput, FitLabel, FitResult } from "./fit";
-export { compareMoney, formatMoney, isMoneyString } from "./money";
 export { rankNextActions, NEXT_ACTION_PRIORITY } from "./next-actions";
 export type { NextAction, NextActionType } from "./next-actions";
 export { PACKET_KINDS, packetMissing, profileCompleteness } from "./profile";
@@ -97,8 +105,17 @@ export {
   ApplyRfpBody,
   DataPointBody,
   DraftSectionBody,
+  AwardBody,
+  BudgetLineBody,
+  ExpenditureBody,
+  InteractionBody,
+  MatchEntryBody,
+  MetricBody,
+  MetricEntryBody,
   PacketShareBody,
   PastAwardBody,
+  ReimbursementBody,
+  ReportBody,
   QuizBody,
   ReviewSectionBody,
   SectionBody,

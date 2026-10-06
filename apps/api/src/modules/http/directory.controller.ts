@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -12,6 +13,7 @@ import {
   Req,
   Res,
   UseGuards,
+  type RawBodyRequest,
 } from "@nestjs/common";
 import { ThrottlerGuard } from "@nestjs/throttler";
 import {
@@ -24,7 +26,7 @@ import {
   PlatformSettingBody,
   UserLookupQuery,
 } from "@se-grants/shared";
-import type { Response } from "express";
+import type { Request, Response } from "express";
 import {
   AuthGuard,
   CsrfGuard,
@@ -45,6 +47,7 @@ import { ENV, type Env } from "../../common/config/env";
 import { parseInput } from "../../common/http/parse";
 import { EMAIL, isMemoryEmail, type EmailProvider } from "../../common/mail/email.provider";
 import { PrismaService } from "../../common/prisma/prisma.service";
+import { BillingService } from "../billing/billing.service";
 import { DigestService } from "../digest/digest.service";
 import { DirectoryService } from "../directory/directory.service";
 
@@ -292,7 +295,26 @@ export class PublicDigestController {
 
 @Controller("webhooks")
 export class WebhooksController {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly billing: BillingService,
+  ) {}
+
+  @Post("stripe")
+  @HttpCode(200)
+  async stripe(@Req() req: RawBodyRequest<Request>) {
+    const raw = req.rawBody;
+    const signature = req.header("stripe-signature") ?? "";
+    if (!raw) {
+      throw new BadRequestException("The billing notice could not be verified.");
+    }
+    const notice = this.billing.readNotice(raw, signature);
+    if (!notice) {
+      throw new BadRequestException("The billing notice could not be verified.");
+    }
+    await this.billing.apply(notice);
+    return { ok: true };
+  }
 
   @Post("twilio")
   @HttpCode(200)
