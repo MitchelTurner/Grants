@@ -69,7 +69,10 @@ export function RfpReviewPage() {
     void (async () => {
       const pdfjs = await import("pdfjs-dist");
       pdfjs.GlobalWorkerOptions.workerSrc = workerUrl;
-      const task = pdfjs.getDocument({ url: localStorageUrl(url) });
+      const task = pdfjs.getDocument({
+        url: localStorageUrl(url),
+        standardFontDataUrl: `${import.meta.env.BASE_URL}standard_fonts/`,
+      });
       const pdf = await task.promise;
       const chosen = Math.min(Math.max(page, 1), pdf.numPages);
       const rendered = await pdf.getPage(chosen);

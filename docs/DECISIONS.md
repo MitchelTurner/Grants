@@ -13,7 +13,7 @@ Phase 2 is in the app. Phase 3 and Phase 4 are not. The assistant is `@anthropic
 - The public quiz asks organization type, community, one focus area, and whether the group already receives federal funds. It lists published opportunities that are not "Not eligible", using the same fit rules as the directory. It does not save the answers.
 - The data pack and past awards start empty. A curator types each figure with a source. Nothing is seeded.
 - Packet passwords are scrypt hashes. The link shows the files only after the password, and download URLs last 5 minutes.
-- pdf.js loads only on the RFP review screen. The first app script stays under 200 KB gzip.
+- pdf.js loads only on the RFP review screen. The first app script stays under 200 KB gzip. Standard fonts are served from `/app/standard_fonts` so a page can be drawn. They are not part of the first script.
 - `pnpm eval:rfp` is manual. The fixture folder holds expected JSON for three synthetic checks. Drop in public PDFs locally before a paid run. It is not in CI.
 - Local file URLs are absolute `APP_URL` links. The dev app on port 5173 rewrites only `/api/v1/dev-storage` to a same-origin path so Vite can proxy the upload and the PDF viewer. S3 links stay absolute.
 

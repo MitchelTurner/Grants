@@ -1,12 +1,46 @@
+import { cpSync, createReadStream, existsSync, mkdirSync, statSync } from "node:fs";
+import { join } from "node:path";
 import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
 import { fileURLToPath, URL } from "node:url";
-import { defineConfig } from "vite";
+import { defineConfig, type Plugin } from "vite";
 import { VitePWA } from "vite-plugin-pwa";
+
+const standardFonts = fileURLToPath(
+  new URL("./node_modules/pdfjs-dist/standard_fonts", import.meta.url),
+);
+
+/** pdf.js asks for Helvetica by filename. Keep those names stable under /app/standard_fonts. */
+function pdfStandardFonts(): Plugin {
+  return {
+    name: "pdfjs-standard-fonts",
+    configureServer(server) {
+      server.middlewares.use("/app/standard_fonts", (req, res, next) => {
+        const name = decodeURIComponent((req.url ?? "/").split("?")[0] ?? "").replace(/^\//, "");
+        if (!/^[\w.-]+$/.test(name)) {
+          next();
+          return;
+        }
+        const file = join(standardFonts, name);
+        if (!existsSync(file) || !statSync(file).isFile()) {
+          next();
+          return;
+        }
+        createReadStream(file).pipe(res);
+      });
+    },
+    writeBundle(options) {
+      const out = join(options.dir ?? "dist", "standard_fonts");
+      mkdirSync(out, { recursive: true });
+      cpSync(standardFonts, out, { recursive: true, dereference: true });
+    },
+  };
+}
 
 export default defineConfig({
   base: "/app/",
   plugins: [
+    pdfStandardFonts(),
     react(),
     tailwindcss(),
     VitePWA({
