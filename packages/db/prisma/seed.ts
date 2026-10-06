@@ -113,18 +113,19 @@ const settings: { key: string; value: string; description: string; sourceUrl?: s
   },
   {
     key: "AI_MONTHLY_TOKENS_FREE",
-    value: "0",
-    description: "Phase 2. Not enforced yet.",
+    value: "100000",
+    description:
+      "Monthly input plus output plus cache tokens for the free plan. A stored 0 uses this default.",
   },
   {
     key: "AI_MONTHLY_TOKENS_PRO",
-    value: "0",
-    description: "Phase 2. Not enforced yet.",
+    value: "1000000",
+    description: "Monthly token allowance for the pro plan. A stored 0 uses this default.",
   },
   {
     key: "AI_MONTHLY_TOKENS_SPONSORED",
-    value: "0",
-    description: "Phase 2. Not enforced yet.",
+    value: "2000000",
+    description: "Monthly token allowance for a sponsored plan. A stored 0 uses this default.",
   },
   {
     key: "FREE_PLAN_LIMITS",

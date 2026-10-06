@@ -2,7 +2,7 @@
 
 A Southeast Alaska–first grants workspace. The product spec is [`docs/SPEC.md`](docs/SPEC.md). Choices that the spec does not pin down are in [`docs/DECISIONS.md`](docs/DECISIONS.md).
 
-Phase 1 is in place: passwordless sign-in, organizations, documents, writing, the directory, applications, compliance, reminders, a public site, and curator tools. AI drafting, awards, and billing are later phases. See the launch checklist in the spec for accounts this repo cannot finish (Twilio, Postmark, production backups, pilot organizations).
+Phase 1 and Phase 2 are in place. Phase 1 covers passwordless sign-in, organizations, documents, writing, the directory, applications, compliance, reminders, a public site, and curator tools. Phase 2 adds RFP reading with a human review step, AI drafts, a criteria check, a curator-managed data pack, a public eligibility quiz, letters of support, packet share links, and past awards. Awards, budgets, and billing stay in later phases. See the launch checklist in the spec for accounts this repo cannot finish (Twilio, Postmark, production backups, pilot organizations).
 
 ## What you need
 
@@ -28,7 +28,7 @@ pnpm dev
 
 `pnpm db:seed` inserts the unpublished funder names and platform settings from the spec. A curator publishes a record only after verifying it.
 
-The logged-in app is at `/app`. Public pages (`/`, `/grants`, `/funders`, `/about`, `/privacy`, `/terms`) are server-rendered and do not need JavaScript.
+The logged-in app is at `/app`. Public pages (`/`, `/grants`, `/funders`, `/quiz`, `/about`, `/privacy`, `/terms`) are server-rendered and do not need JavaScript. AI calls use `ANTHROPIC_API_KEY` when it is set. Tests and local runs without that key use a fake assistant and do not contact Anthropic. `pnpm eval:rfp` scores fixture PDFs and is not part of CI.
 
 ## Checks
 

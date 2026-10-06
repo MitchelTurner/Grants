@@ -7,6 +7,8 @@ import { ENV, type Env } from "../common/config/env";
 import { MailModule } from "../common/mail/mail.module";
 import { SmsModule } from "../common/sms/sms.module";
 import { StorageModule } from "../common/storage/storage.module";
+import { AI, AnthropicAiProvider, MemoryAiProvider } from "../common/ai/ai.provider";
+import { WriteService } from "./ai/write.service";
 import { ApplicationsService } from "./applications/applications.service";
 import { AuthService } from "./auth/auth.service";
 import { CalendarService } from "./calendar/calendar.service";
@@ -24,6 +26,12 @@ import {
   TestMailboxController,
   WebhooksController,
 } from "./http/directory.controller";
+import {
+  PastAwardReadController,
+  PublicWriteController,
+  WriteAdminController,
+  WriteController,
+} from "./http/write.controller";
 import {
   AuthController,
   InvitationAcceptController,
@@ -75,6 +83,10 @@ import { RemindersService } from "./reminders/reminders.service";
     WebhooksController,
     TestMailboxController,
     PublicSiteController,
+    WriteController,
+    PastAwardReadController,
+    WriteAdminController,
+    PublicWriteController,
   ],
   providers: [
     SessionService,
@@ -95,6 +107,17 @@ import { RemindersService } from "./reminders/reminders.service";
     DigestService,
     ExportService,
     PublicSiteService,
+    WriteService,
+    {
+      provide: AI,
+      inject: [ENV],
+      useFactory: (env: Env) => {
+        if (env.NODE_ENV === "test" || !env.ANTHROPIC_API_KEY) {
+          return new MemoryAiProvider();
+        }
+        return new AnthropicAiProvider(env.ANTHROPIC_API_KEY);
+      },
+    },
   ],
   exports: [
     AuthService,
@@ -103,6 +126,7 @@ import { RemindersService } from "./reminders/reminders.service";
     DirectoryService,
     ExportService,
     DashboardService,
+    WriteService,
   ],
 })
 export class Phase1Module {}

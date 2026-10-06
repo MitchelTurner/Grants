@@ -309,6 +309,98 @@ export const UserLookupQuery = z.object({
   email: z.string().trim().email(),
 });
 
+export const SectionBody = z.object({
+  heading: z.string().trim().min(1).max(200),
+  prompt: z.string().max(8_000).default(""),
+  wordLimit: z.number().int().positive().nullable().optional(),
+  charLimit: z.number().int().positive().nullable().optional(),
+  body: z.string().max(100_000).optional(),
+});
+
+export const UpdateSectionBody = SectionBody.partial();
+
+export const DraftSectionBody = z.object({
+  contentBlockIds: z.array(z.string()).max(20),
+  dataPointIds: z.array(z.string()).max(20),
+  tone: z.enum(["plain", "formal", "warm"]),
+  targetWords: z.number().int().positive().max(5_000),
+});
+
+export const ReviewSectionBody = z.object({
+  criteria: z
+    .array(
+      z.object({
+        criterion: z.string().trim().min(1).max(500),
+        points: z.number().nullable(),
+      }),
+    )
+    .min(1)
+    .max(40),
+});
+
+export const StartRfpParseBody = z.object({
+  applicationId: z.string().min(1).nullable(),
+});
+
+export const ApplyRfpBody = z.object({
+  applyTitle: z.boolean(),
+  title: z.string().max(200),
+  applyDeadline: z.boolean(),
+  deadlineIso: z.string().max(40),
+  sections: z
+    .array(
+      z.object({
+        include: z.boolean(),
+        heading: z.string().max(200),
+        prompt: z.string().max(8_000),
+        limit: z.string().max(200),
+      }),
+    )
+    .max(40),
+});
+
+export const SupportLetterBody = z.object({
+  partnerName: z.string().trim().min(1).max(200),
+  partnerEmail: email,
+  draftBody: z.string().trim().min(1).max(20_000),
+  dueAt: z.string().datetime().nullable(),
+});
+
+export const PacketShareBody = z.object({
+  documentIds: z.array(z.string().min(1)).min(1).max(30),
+  expiresInDays: z.number().int().min(1).max(90),
+  password: z.string().min(8).max(100).nullable(),
+});
+
+export const DataPointBody = z.object({
+  community: z.string().trim().min(1).max(120),
+  metric: z.string().trim().min(1).max(200),
+  value: z.string().regex(/^-?\d+(\.\d+)?$/),
+  unit: z.string().trim().min(1).max(40),
+  year: z.number().int().min(1900).max(2100),
+  sourceName: z.string().trim().min(1).max(200),
+  sourceUrl: z.string().url(),
+  retrievedAt: z.string().datetime(),
+});
+
+export const PastAwardBody = z.object({
+  funderId: z.string().min(1),
+  recipientName: z.string().trim().min(1).max(200),
+  recipientOrgId: z.string().min(1).nullable(),
+  community: z.string().trim().min(1).max(120),
+  amount: MoneyString,
+  year: z.number().int().min(1900).max(2100),
+  purpose: z.string().trim().min(1).max(500),
+  sourceUrl: z.string().url(),
+});
+
+export const QuizBody = z.object({
+  orgType: OrgTypeSchema,
+  community: z.string().trim().min(1).max(120),
+  focus: FocusAreaSchema,
+  federal: z.enum(["yes", "no"]),
+});
+
 export const FitSchema = z.object({
   label: z.enum(["good_fit", "possible_fit", "not_eligible"]),
   score: z.number(),

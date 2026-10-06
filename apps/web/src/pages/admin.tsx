@@ -372,6 +372,174 @@ function AdminBody() {
           {users ? <pre className="mt-3 overflow-auto text-xs">{users}</pre> : null}
         </section>
       ) : null}
+      <CuratorFacts funders={funders.data?.items ?? []} onNote={setNote} />
     </Page>
+  );
+}
+
+function CuratorFacts({ funders, onNote }: { funders: Funder[]; onNote: (note: string) => void }) {
+  const [community, setCommunity] = useState("Juneau");
+  const [metric, setMetric] = useState("");
+  const [value, setValue] = useState("");
+  const [unit, setUnit] = useState("");
+  const [year, setYear] = useState(String(new Date().getFullYear()));
+  const [sourceName, setSourceName] = useState("");
+  const [sourceUrl, setSourceUrl] = useState("");
+  const [funderId, setFunderId] = useState("");
+  const [recipientName, setRecipientName] = useState("");
+  const [amount, setAmount] = useState("");
+  const [purpose, setPurpose] = useState("");
+  const [awardUrl, setAwardUrl] = useState("");
+  return (
+    <section className="mt-8 space-y-4">
+      <h2 className="text-lg font-semibold">Southeast data pack</h2>
+      <p className="text-sm text-ink-soft">
+        Record a figure only when you have a source. Do not estimate.
+      </p>
+      <form
+        onSubmit={(event) => {
+          event.preventDefault();
+          void api("/admin/data-points", {
+            method: "POST",
+            json: {
+              community,
+              metric,
+              value,
+              unit,
+              year: Number(year),
+              sourceName,
+              sourceUrl,
+              retrievedAt: new Date().toISOString(),
+            },
+          }).then(() => onNote("Data point saved."));
+        }}
+      >
+        <Field label="Community">
+          <input
+            className={controlClass}
+            value={community}
+            onChange={(event) => setCommunity(event.target.value)}
+            required
+          />
+        </Field>
+        <Field label="Metric">
+          <input
+            className={controlClass}
+            value={metric}
+            onChange={(event) => setMetric(event.target.value)}
+            required
+          />
+        </Field>
+        <Field label="Value">
+          <input
+            className={controlClass}
+            value={value}
+            onChange={(event) => setValue(event.target.value)}
+            required
+          />
+        </Field>
+        <Field label="Unit">
+          <input
+            className={controlClass}
+            value={unit}
+            onChange={(event) => setUnit(event.target.value)}
+            required
+          />
+        </Field>
+        <Field label="Year">
+          <input
+            className={controlClass}
+            value={year}
+            onChange={(event) => setYear(event.target.value)}
+            required
+          />
+        </Field>
+        <Field label="Source name">
+          <input
+            className={controlClass}
+            value={sourceName}
+            onChange={(event) => setSourceName(event.target.value)}
+            required
+          />
+        </Field>
+        <Field label="Source URL">
+          <input
+            className={controlClass}
+            value={sourceUrl}
+            onChange={(event) => setSourceUrl(event.target.value)}
+            required
+          />
+        </Field>
+        <Button type="submit">Save data point</Button>
+      </form>
+      <h2 className="text-lg font-semibold">Past award</h2>
+      <form
+        onSubmit={(event) => {
+          event.preventDefault();
+          void api("/admin/past-awards", {
+            method: "POST",
+            json: {
+              funderId,
+              recipientName,
+              recipientOrgId: null,
+              community,
+              amount,
+              year: Number(year),
+              purpose,
+              sourceUrl: awardUrl,
+            },
+          }).then(() => onNote("Past award saved."));
+        }}
+      >
+        <Field label="Funder">
+          <select
+            className={controlClass}
+            value={funderId}
+            onChange={(event) => setFunderId(event.target.value)}
+            required
+          >
+            <option value="">Choose</option>
+            {funders.map((funder) => (
+              <option key={funder.id} value={funder.id}>
+                {funder.name}
+              </option>
+            ))}
+          </select>
+        </Field>
+        <Field label="Recipient">
+          <input
+            className={controlClass}
+            value={recipientName}
+            onChange={(event) => setRecipientName(event.target.value)}
+            required
+          />
+        </Field>
+        <Field label="Amount">
+          <input
+            className={controlClass}
+            value={amount}
+            onChange={(event) => setAmount(event.target.value)}
+            required
+          />
+        </Field>
+        <Field label="Purpose">
+          <input
+            className={controlClass}
+            value={purpose}
+            onChange={(event) => setPurpose(event.target.value)}
+            required
+          />
+        </Field>
+        <Field label="Source URL">
+          <input
+            className={controlClass}
+            value={awardUrl}
+            onChange={(event) => setAwardUrl(event.target.value)}
+            required
+          />
+        </Field>
+        <Button type="submit">Save past award</Button>
+      </form>
+    </section>
   );
 }

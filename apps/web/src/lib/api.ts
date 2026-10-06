@@ -59,3 +59,45 @@ export async function api<T>(
 export function resetCsrf(): void {
   csrfToken = "";
 }
+
+export async function streamApi(
+  path: string,
+  json: unknown,
+  onEvent: (event: Record<string, unknown>) => void,
+): Promise<void> {
+  const headers = new Headers({ "content-type": "application/json" });
+  headers.set("x-csrf-token", csrfToken || (await loadCsrf()));
+  const response = await fetch(`/api/v1${path}`, {
+    method: "POST",
+    credentials: "include",
+    headers,
+    body: JSON.stringify(json),
+  });
+  if (!response.ok) {
+    const text = await response.text();
+    const data = text
+      ? (JSON.parse(text) as { error?: { code?: string; message?: string } })
+      : null;
+    throw new ApiError(
+      data?.error?.message ?? "Something went wrong. Try again.",
+      response.status,
+      data?.error?.code,
+    );
+  }
+  const reader = response.body?.getReader();
+  if (!reader) return;
+  const decoder = new TextDecoder();
+  let buffer = "";
+  for (;;) {
+    const step = await reader.read();
+    if (step.done) break;
+    buffer += decoder.decode(step.value, { stream: true });
+    const parts = buffer.split("\n\n");
+    buffer = parts.pop() ?? "";
+    for (const part of parts) {
+      const line = part.split("\n").find((item) => item.startsWith("data: "));
+      if (!line) continue;
+      onEvent(JSON.parse(line.slice(6)) as Record<string, unknown>);
+    }
+  }
+}

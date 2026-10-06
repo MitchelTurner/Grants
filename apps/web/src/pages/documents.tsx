@@ -1,6 +1,7 @@
 import { DOCUMENT_KINDS, documentKindLabel, type DocumentKind } from "@se-grants/shared";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
+import { useNavigate } from "react-router";
 import { useOrg } from "../auth";
 import { canContribute, canEdit } from "../components/shell";
 import { Button, Card, Empty, Field, Notice, Page, controlClass } from "../components/ui";
@@ -19,7 +20,19 @@ type DocumentRow = {
 
 export function DocumentsPage() {
   const org = useOrg();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const [applicationId, setApplicationId] = useState("");
+  const [shareIds, setShareIds] = useState<string[]>([]);
+  const [shareDays, setShareDays] = useState("14");
+  const [sharePassword, setSharePassword] = useState("");
+  const [shareUrl, setShareUrl] = useState<string | null>(null);
+  const applications = useQuery({
+    queryKey: ["applications", org?.id],
+    enabled: Boolean(org),
+    queryFn: () =>
+      api<{ items: Array<{ id: string; title: string }> }>(`/orgs/${org?.id}/applications`),
+  });
   const [kind, setKind] = useState<DocumentKind>("IRS_DETERMINATION_LETTER");
   const [title, setTitle] = useState("");
   const [expiresAt, setExpiresAt] = useState("");
@@ -163,6 +176,61 @@ export function DocumentsPage() {
           <Button type="submit">Upload</Button>
         </form>
       ) : null}
+      {canEdit(organization.role) ? (
+        <div className="mt-4">
+          <Field
+            label="Application for Read this RFP"
+            hint="The reading is not saved onto the application until you confirm each item."
+          >
+            <select
+              className={controlClass}
+              value={applicationId}
+              onChange={(event) => setApplicationId(event.target.value)}
+            >
+              <option value="">Choose an application</option>
+              {(applications.data?.items ?? []).map((application) => (
+                <option key={application.id} value={application.id}>
+                  {application.title}
+                </option>
+              ))}
+            </select>
+          </Field>
+          {shareUrl ? <p className="text-sm">Share link, shown once: {shareUrl}</p> : null}
+          <Button
+            tone="quiet"
+            onClick={() => {
+              void api<{ url: string }>(`/orgs/${organization.id}/packet-shares`, {
+                method: "POST",
+                json: {
+                  documentIds: shareIds,
+                  expiresInDays: Number(shareDays) || 14,
+                  password: sharePassword.length >= 8 ? sharePassword : null,
+                },
+              }).then((result) => setShareUrl(result.url));
+            }}
+            disabled={shareIds.length === 0}
+          >
+            Create a funder packet link
+          </Button>
+          <label className="mt-2 block text-sm">
+            Link expires in days
+            <input
+              className={controlClass}
+              value={shareDays}
+              onChange={(event) => setShareDays(event.target.value)}
+            />
+          </label>
+          <label className="mt-2 block text-sm">
+            Optional password (at least 8 characters)
+            <input
+              className={controlClass}
+              type="password"
+              value={sharePassword}
+              onChange={(event) => setSharePassword(event.target.value)}
+            />
+          </label>
+        </div>
+      ) : null}
       {items.length === 0 ? (
         <div className="mt-4">
           <Empty title="The vault is empty">
@@ -192,6 +260,37 @@ export function DocumentsPage() {
                     <Button tone="quiet" onClick={() => void download(row.id)}>
                       Download
                     </Button>
+                    {row.kind === "RFP_NOFO" && canEdit(organization.role) ? (
+                      <Button
+                        onClick={() => {
+                          void api<{ id: string }>(
+                            `/orgs/${organization.id}/documents/${row.id}/rfp-parses`,
+                            {
+                              method: "POST",
+                              json: { applicationId: applicationId || null },
+                            },
+                          ).then((parse) => navigate(`/o/${organization.slug}/rfp/${parse.id}`));
+                        }}
+                      >
+                        Read this RFP
+                      </Button>
+                    ) : null}
+                    {canEdit(organization.role) ? (
+                      <label className="flex min-h-11 items-center gap-2 text-sm">
+                        <input
+                          type="checkbox"
+                          checked={shareIds.includes(row.id)}
+                          onChange={(event) =>
+                            setShareIds((current) =>
+                              event.target.checked
+                                ? [...current, row.id]
+                                : current.filter((id) => id !== row.id),
+                            )
+                          }
+                        />
+                        Include in a share link
+                      </label>
+                    ) : null}
                     {canEdit(org.role) ? (
                       <Button
                         tone="quiet"

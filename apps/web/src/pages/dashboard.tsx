@@ -135,6 +135,7 @@ export function MorePage() {
     ["Opportunities", "opportunities"],
     ["Documents", "documents"],
     ["Writing", "content"],
+    ["Southeast data", "data"],
     ["Compliance", "compliance"],
     ["Settings", "settings"],
     ["Account", "/me"],

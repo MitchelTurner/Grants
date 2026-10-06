@@ -63,6 +63,12 @@ const AccountPage = lazy(() =>
   import("./pages/account").then((mod) => ({ default: mod.AccountPage })),
 );
 const AdminPage = lazy(() => import("./pages/admin").then((mod) => ({ default: mod.AdminPage })));
+const RfpReviewPage = lazy(() =>
+  import("./pages/rfp-review").then((mod) => ({ default: mod.RfpReviewPage })),
+);
+const DataPackPage = lazy(() =>
+  import("./pages/data").then((mod) => ({ default: mod.DataPackPage })),
+);
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: 1, refetchOnWindowFocus: false } },
@@ -141,6 +147,22 @@ createRoot(root).render(
                 element={
                   <OrgLayout>
                     <ApplicationsPage />
+                  </OrgLayout>
+                }
+              />
+              <Route
+                path="/o/:orgSlug/rfp/:parseId"
+                element={
+                  <OrgLayout>
+                    <RfpReviewPage />
+                  </OrgLayout>
+                }
+              />
+              <Route
+                path="/o/:orgSlug/data"
+                element={
+                  <OrgLayout>
+                    <DataPackPage />
                   </OrgLayout>
                 }
               />

@@ -185,6 +185,26 @@ enum DigestIssueStatus {
   SENT
 }
 
+enum SectionSource {
+  MANUAL
+  RFP_PARSER
+}
+
+enum RfpParseStatus {
+  QUEUED
+  RUNNING
+  NEEDS_REVIEW
+  APPLIED
+  FAILED
+}
+
+enum SupportLetterStatus {
+  REQUESTED
+  VIEWED
+  UPLOADED
+  DECLINED
+}
+
 // ───────────── Identity ─────────────
 
 model User {
@@ -205,6 +225,10 @@ model User {
   memberships      Membership[]
   notificationPref NotificationPreference?
   reminders        Reminder[]
+  dataPoints       DataPoint[]
+  aiUsage          AiUsage[]
+  packetShares     PacketShare[]
+  supportLetters   SupportLetterRequest[]
 }
 
 model Session {
@@ -283,6 +307,9 @@ model Organization {
   watches       OpportunityWatch[]
   reminders     Reminder[]
   auditLogs     AuditLog[]
+  rfpParses     RfpParse[]
+  aiUsage       AiUsage[]
+  packetShares  PacketShare[]
 }
 
 model Membership {
@@ -333,7 +360,9 @@ model Document {
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
   deletedAt      DateTime?
-  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  organization    Organization           @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  rfpParses       RfpParse[]
+  supportLetters  SupportLetterRequest[]
 
   @@index([organizationId, kind])
 }
@@ -390,7 +419,8 @@ model Funder {
   verifiedById     String?
   createdAt        DateTime      @default(now())
   updatedAt        DateTime      @updatedAt
-  opportunities    Opportunity[]
+  opportunities Opportunity[]
+  pastAwards    PastAward[]
 }
 
 model Opportunity {
@@ -463,9 +493,12 @@ model Application {
   createdAt        DateTime          @default(now())
   updatedAt        DateTime          @updatedAt
   deletedAt        DateTime?
-  organization     Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  opportunity      Opportunity?      @relation(fields: [opportunityId], references: [id])
+  organization     Organization            @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  opportunity      Opportunity?            @relation(fields: [opportunityId], references: [id])
   checklist        ChecklistItem[]
+  sections         ApplicationSection[]
+  rfpParses        RfpParse[]
+  supportLetters   SupportLetterRequest[]
 
   @@index([organizationId, status])
 }
@@ -579,4 +612,133 @@ model AuditLog {
   organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
 
   @@index([organizationId, createdAt])
+}
+
+// ───────────── Phase 2: write faster ─────────────
+
+model ApplicationSection {
+  id            String        @id @default(cuid())
+  applicationId String
+  heading       String
+  prompt        String        @db.Text
+  wordLimit     Int?
+  charLimit     Int?
+  body          String        @default("") @db.Text
+  sortOrder     Int           @default(0)
+  source        SectionSource @default(MANUAL)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  application   Application   @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+
+  @@index([applicationId, sortOrder])
+}
+
+model RfpParse {
+  id             String         @id @default(cuid())
+  organizationId String
+  applicationId  String?
+  documentId     String
+  status         RfpParseStatus @default(QUEUED)
+  model          String
+  result         Json?
+  confirmedAt    DateTime?
+  error          String?        @db.Text
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  organization   Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  application    Application?   @relation(fields: [applicationId], references: [id], onDelete: SetNull)
+  document       Document       @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, createdAt])
+  @@index([applicationId])
+}
+
+model AiUsage {
+  id               String       @id @default(cuid())
+  organizationId   String
+  userId           String
+  feature          String
+  model            String
+  inputTokens      Int
+  outputTokens     Int
+  cacheReadTokens  Int          @default(0)
+  cacheWriteTokens Int          @default(0)
+  // SPEC-QUESTION: token price is not in the spec. Store 0 until a rate is set.
+  estCostMicros    Int          @default(0)
+  createdAt        DateTime     @default(now())
+  organization     Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user             User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, createdAt])
+}
+
+model DataPoint {
+  id          String   @id @default(cuid())
+  community   String
+  metric      String
+  value       Decimal  @db.Decimal(18, 4)
+  unit        String
+  year        Int
+  sourceName  String
+  sourceUrl   String
+  retrievedAt DateTime
+  curatorId   String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  curator     User     @relation(fields: [curatorId], references: [id])
+
+  @@index([community, year])
+}
+
+model SupportLetterRequest {
+  id                 String              @id @default(cuid())
+  applicationId      String
+  partnerName        String
+  partnerEmail       String
+  draftBody          String              @db.Text
+  tokenHash          String              @unique
+  status             SupportLetterStatus @default(REQUESTED)
+  dueAt              DateTime?
+  uploadedDocumentId String?
+  // SPEC-QUESTION: the vault requires an uploader. This is the member who sent the request.
+  requestedById      String
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  application        Application         @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  uploadedDocument   Document?           @relation(fields: [uploadedDocumentId], references: [id], onDelete: SetNull)
+  requestedBy        User                @relation(fields: [requestedById], references: [id])
+
+  @@index([applicationId])
+}
+
+model PacketShare {
+  id             String       @id @default(cuid())
+  organizationId String
+  tokenHash      String       @unique
+  documentIds    String[]
+  expiresAt      DateTime
+  passwordHash   String?
+  viewCount      Int          @default(0)
+  createdById    String
+  createdAt      DateTime     @default(now())
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdBy      User         @relation(fields: [createdById], references: [id])
+
+  @@index([organizationId])
+}
+
+model PastAward {
+  id             String   @id @default(cuid())
+  funderId       String
+  recipientName  String
+  recipientOrgId String?
+  community      String
+  amount         Decimal  @db.Decimal(14, 2)
+  year           Int
+  purpose        String
+  sourceUrl      String
+  createdAt      DateTime @default(now())
+  funder         Funder   @relation(fields: [funderId], references: [id], onDelete: Cascade)
+
+  @@index([funderId, year])
 }

@@ -1,3 +1,11 @@
+export { fieldAccuracy } from "./ai/accuracy";
+export type { AccuracyReport } from "./ai/accuracy";
+export { coverageLabel, CriteriaReview, COVERAGE } from "./ai/criteria";
+export type { CriteriaReview as CriteriaReviewResult } from "./ai/criteria";
+export { limitsFromText, needsMarkers, registrationWarnings } from "./ai/needs";
+export { RfpExtraction } from "./ai/rfp-extraction";
+export type { RfpExtraction as RfpExtractionResult } from "./ai/rfp-extraction";
+export { SAMPLE_RFP_EXTRACTION, sampleDraft, sampleReview } from "./ai/sample";
 export { FOCUS_AREAS, SE_COMMUNITIES } from "./communities";
 export type { FocusArea, SeCommunity } from "./communities";
 export { HealthCheckState, HealthResponse } from "./health";
@@ -86,6 +94,17 @@ export {
 } from "./reminders";
 export {
   AcceptInvitationBody,
+  ApplyRfpBody,
+  DataPointBody,
+  DraftSectionBody,
+  PacketShareBody,
+  PastAwardBody,
+  QuizBody,
+  ReviewSectionBody,
+  SectionBody,
+  StartRfpParseBody,
+  SupportLetterBody,
+  UpdateSectionBody,
   CalendarQuery,
   ChecklistItemBody,
   ComplianceTemplateQuery,

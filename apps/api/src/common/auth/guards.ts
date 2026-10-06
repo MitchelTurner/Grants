@@ -137,7 +137,10 @@ export class CsrfGuard implements CanActivate {
     if (
       path.startsWith("/api/v1/webhooks") ||
       path.startsWith("/api/v1/public") ||
-      path.startsWith("/api/v1/dev-storage")
+      path.startsWith("/api/v1/dev-storage") ||
+      path.startsWith("/quiz") ||
+      path.startsWith("/support/") ||
+      path.startsWith("/share/")
     ) {
       return true;
     }

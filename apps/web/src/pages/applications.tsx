@@ -17,6 +17,7 @@ import { Button, Empty, Field, Page, controlClass } from "../components/ui";
 import { api } from "../lib/api";
 import { daysLeft, when } from "../lib/format";
 import { toast } from "../lib/toast";
+import { ApplicationSections } from "./sections";
 
 type ChecklistItem = {
   id: string;
@@ -457,6 +458,12 @@ export function ApplicationDetailPage() {
               <Button type="submit">Add item</Button>
             </form>
           ) : null}
+          <ApplicationSections
+            orgId={organization.id}
+            orgSlug={organization.slug}
+            applicationId={id}
+            canEdit={canEdit(organization.role)}
+          />
         </>
       ) : (
         <p>Loading…</p>

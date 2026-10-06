@@ -2,6 +2,20 @@
 
 Running log of choices made where the spec was silent, or where a dependency constraint forced a narrower option. Newest first.
 
+## 2026-10-06 — Phase 2 writing tools
+
+Phase 2 is in the app. Phase 3 and Phase 4 are not. The assistant is `@anthropic-ai/sdk` `messages.parse` with `zodOutputFormat`, matching the spec. Tests and any boot without `ANTHROPIC_API_KEY` use an in-memory fake. The model id is `AI_MODEL_DEFAULT`.
+
+- A stored quota of `0` or a missing platform setting uses 100,000 tokens on Free, 1,000,000 on Pro, and 2,000,000 on Sponsored per month. A curator can replace those with a positive setting. Token price is not in the spec, so `estCostMicros` is 0.
+- Parsed narrative sections are saved only when someone checks them. A deadline is saved only when its checkbox is checked. Attachments are shown and are not turned into checklist items.
+- The criteria review job is `ai:report-draft`. The result is kept in Redis for 7 days. In tests the job also runs immediately so the response includes the review.
+- `RfpParse` and the other Phase 2 models have `createdAt` where the sketch did not name it. A support-letter upload is stored by the member who sent the request, because the vault requires an uploader.
+- The public quiz asks organization type, community, one focus area, and whether the group already receives federal funds. It lists published opportunities that are not "Not eligible", using the same fit rules as the directory. It does not save the answers.
+- The data pack and past awards start empty. A curator types each figure with a source. Nothing is seeded.
+- Packet passwords are scrypt hashes. The link shows the files only after the password, and download URLs last 5 minutes.
+- pdf.js loads only on the RFP review screen. The first app script stays under 200 KB gzip.
+- `pnpm eval:rfp` is manual. The fixture folder holds expected JSON for three synthetic checks. Drop in public PDFs locally before a paid run. It is not in CI.
+
 ## 2026-10-06 — Phase 1 is in the app; launch accounts are not
 
 Milestones M1–M8 are implemented on top of the M0 scaffold: passwordless sign-in, organizations, the document vault, content blocks, the directory, applications, compliance, reminders, the calendar feed, the public site, the digest, export, and curator admin. Phase 2–4 (AI drafting, awards, billing, the funder portal) are not built.

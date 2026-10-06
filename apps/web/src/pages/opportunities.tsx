@@ -22,11 +22,43 @@ type Opportunity = {
   caution: string | null;
   samWarning: string | null;
   fit: { label: string; text: string; reasons: string[] } | null;
-  funder: { name: string; slug: string; type: string };
+  funder: { id?: string; name: string; slug: string; type: string };
   status: string;
 };
 
 type PageResult = { items: Opportunity[]; nextCursor: string | null };
+
+function PastAwards({ funderId }: { funderId: string }) {
+  const awards = useQuery({
+    queryKey: ["past-awards", funderId],
+    queryFn: () =>
+      api<
+        Array<{
+          id: string;
+          year: number;
+          recipientName: string;
+          community: string;
+          amount: string | null;
+          purpose: string;
+        }>
+      >(`/funders/${funderId}/past-awards`),
+  });
+  const rows = awards.data ?? [];
+  if (rows.length === 0) return null;
+  return (
+    <section className="mt-4">
+      <h2 className="text-lg font-semibold">Past awards on record</h2>
+      <ul className="mt-2 space-y-2 text-sm">
+        {rows.map((award) => (
+          <li key={award.id}>
+            {award.year} · {award.recipientName} · {award.community}
+            {award.amount ? ` · ${formatMoney(award.amount)}` : ""} · {award.purpose}
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
 
 export function OpportunitiesPage() {
   const org = useOrg();
@@ -212,6 +244,7 @@ export function OpportunityDetailPage() {
           ) : null}
           {item.caution ? <p className="mt-2 text-sm">{item.caution}</p> : null}
           {item.samWarning ? <p className="mt-2 text-sm">{item.samWarning}</p> : null}
+          {item.funder.id ? <PastAwards funderId={item.funder.id} /> : null}
           <div className="mt-4 flex flex-wrap gap-3">
             {canEdit(org.role) ? <Button onClick={() => void watch()}>Watch</Button> : null}
             {canEdit(org.role) ? (

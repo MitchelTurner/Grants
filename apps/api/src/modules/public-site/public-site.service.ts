@@ -7,6 +7,7 @@ import { displayDeadline } from "@se-grants/shared";
 import { Inject } from "@nestjs/common";
 import { ENV, type Env } from "../../common/config/env";
 import { PrismaService } from "../../common/prisma/prisma.service";
+import { WriteService } from "../ai/write.service";
 
 @Injectable()
 export class PublicSiteService {
@@ -14,6 +15,7 @@ export class PublicSiteService {
 
   constructor(
     private readonly prisma: PrismaService,
+    private readonly writing: WriteService,
     @Inject(ENV) private readonly env: Env,
   ) {
     const source = readFileSync(resolveView("layout.hbs"), "utf8");
@@ -28,7 +30,7 @@ export class PublicSiteService {
     const body = `
       <h1>Never miss a deadline.</h1>
       <p>Southeast Grants is a workspace for nonprofits, tribes, small businesses, and small cities in Southeast Alaska. Find regional money, keep reusable writing, and track the dates that keep future funding safe.</p>
-      <p><a class="button" href="/app/sign-in">Create a free account</a></p>
+      <p><a class="button" href="/app/sign-in">Create a free account</a> <a class="button" href="/quiz">Check what might fit</a></p>
       <section class="card">
         <h2>Southeast Grants digest</h2>
         <p class="muted">A weekly email of open opportunities. A person reviews it before it goes out. You confirm your address first.</p>
@@ -152,7 +154,16 @@ export class PublicSiteService {
     const row = await this.prisma.db.funder.findUnique({ where: { slug } });
     if (!row || !row.isPublished) return null;
     const verified = row.lastVerifiedAt ? row.lastVerifiedAt.toISOString().slice(0, 10) : "not yet";
-    const body = `<h1>${escapeHtml(row.name)}</h1><p>${escapeHtml(row.description ?? "")}</p><p class="muted">Last verified: ${escapeHtml(verified)}</p><p><a class="button" href="/app/sign-in">Track this in your workspace</a></p>`;
+    const awards = await this.writing.pastAwardsForPublicFunder(slug);
+    const awardList = awards
+      .map(
+        (award) =>
+          `<li>${escapeHtml(String(award.year))} · ${escapeHtml(award.recipientName)} · ${escapeHtml(award.community)} · ${escapeHtml(award.amount ?? "")} · ${escapeHtml(award.purpose)} · <a href="${escapeHtml(award.sourceUrl)}">Source</a></li>`,
+      )
+      .join("");
+    const body = `<h1>${escapeHtml(row.name)}</h1><p>${escapeHtml(row.description ?? "")}</p><p class="muted">Last verified: ${escapeHtml(verified)}</p>${
+      awardList ? `<h2>Past awards on record</h2><ul>${awardList}</ul>` : ""
+    }<p><a class="button" href="/app/sign-in">Track this in your workspace</a></p>`;
     return this.page(
       `${row.name} · Southeast Grants`,
       row.description?.slice(0, 160) ?? row.name,
@@ -172,7 +183,7 @@ export class PublicSiteService {
     return this.page(
       "Privacy · Southeast Grants",
       "How Southeast Grants handles organization data.",
-      `<h1>Privacy</h1><p>Your organization owns its documents, writing, and applications. Owners can export everything or delete the organization. We do not use one organization's files to help another unless that organization opts in.</p><p>AI drafting is not turned on yet. When it is, document text is sent to Anthropic only after someone clicks an AI action, and a person reviews the result before it is saved.</p><p>Sign-in emails contain a link and a short code. We store only a hash of the session token.</p>`,
+      `<h1>Privacy</h1><p>Your organization owns its documents, writing, and applications. Owners can export everything or delete the organization. We do not use one organization's files to help another unless that organization opts in.</p><p>AI features run only when someone clicks an AI action. The document or draft is sent to Anthropic for that action. A person reviews the result before it is saved. Nothing the assistant writes is filed as a deadline, checklist item, or submitted answer on its own.</p><p>Sign-in emails contain a link and a short code. We store only a hash of the session token.</p>`,
     );
   }
 
@@ -208,6 +219,7 @@ export class PublicSiteService {
       "/about",
       "/privacy",
       "/terms",
+      "/quiz",
       ...grants.map((row) => `/grants/${row.slug}`),
       ...funders.map((row) => `/funders/${row.slug}`),
     ];

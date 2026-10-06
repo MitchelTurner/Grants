@@ -11,6 +11,7 @@ import { redisConnectionOptions } from "./worker/redis-connection";
 import { DigestService } from "./modules/digest/digest.service";
 import { DirectoryService } from "./modules/directory/directory.service";
 import { ExportService } from "./modules/export/export.service";
+import { WriteService } from "./modules/ai/write.service";
 import { RemindersService } from "./modules/reminders/reminders.service";
 
 async function main(): Promise<void> {
@@ -23,6 +24,7 @@ async function main(): Promise<void> {
   const directory = app.get(DirectoryService);
   const exports = app.get(ExportService);
   const mail = app.get(MailService);
+  const writing = app.get(WriteService);
   const sms = app.get(SmsService);
 
   const workers = [
@@ -46,6 +48,25 @@ async function main(): Promise<void> {
       "email:send",
       async (job) => {
         await mail.send(job.data);
+      },
+      { connection },
+    ),
+    new Worker("ai:rfp-parse", async (job) => writing.processRfpParse(String(job.data.parseId)), {
+      connection,
+    }),
+    new Worker(
+      "ai:report-draft",
+      async (job) => {
+        const data = job.data as {
+          jobId: string;
+          organizationId: string;
+          userId: string;
+          sectionId: string;
+          heading: string;
+          body: string;
+          criteria: Array<{ criterion: string; points: number | null }>;
+        };
+        await writing.processReportDraft(data);
       },
       { connection },
     ),

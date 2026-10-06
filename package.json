@@ -15,7 +15,8 @@
     "format:check": "prettier --check .",
     "db:generate": "pnpm --filter @se-grants/db generate",
     "db:migrate": "pnpm --filter @se-grants/db exec prisma migrate deploy",
-    "db:seed": "pnpm --filter @se-grants/db exec prisma db seed"
+    "db:seed": "pnpm --filter @se-grants/db exec prisma db seed",
+    "eval:rfp": "pnpm --filter @se-grants/api exec tsx src/eval/run-rfp-eval.ts"
   },
   "pnpm": {
     "onlyBuiltDependencies": [
