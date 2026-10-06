@@ -8,7 +8,9 @@ builder = "DOCKERFILE"
 dockerfilePath = "Dockerfile"
 
 [deploy]
-healthcheckPath = "/health"
+# /live only checks that the process is listening. /health returns 503 when
+# Postgres or Redis is down, and Railway treats that as a crashed deployment.
+healthcheckPath = "/live"
 healthcheckTimeout = 30
 startCommand = "docker/web-entrypoint.sh"
 restartPolicyType = "ON_FAILURE"

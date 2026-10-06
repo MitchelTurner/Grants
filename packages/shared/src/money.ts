@@ -22,9 +22,7 @@ export function compareMoney(left: string, right: string): number {
 }
 
 export function addMoney(values: Array<string | null | undefined>): string {
-  return values
-    .reduce((sum, value) => (value ? sum.plus(value) : sum), new Decimal(0))
-    .toFixed(2);
+  return values.reduce((sum, value) => (value ? sum.plus(value) : sum), new Decimal(0)).toFixed(2);
 }
 
 export function multiplyMoney(left: string, right: string): string {

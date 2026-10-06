@@ -2,6 +2,12 @@
 
 Running log of choices made where the spec was silent, or where a dependency constraint forced a narrower option. Newest first.
 
+## 2026-10-06 — The process listens before migrations finish
+
+Railway marks a deployment crashed when the start command exits, or when the deploy probe is not HTTP 200. `prisma migrate deploy` was running before Node listened. A missing `DATABASE_URL`, or a migration that failed, exited the container, so the probe never got an answer.
+
+The container now starts Node immediately. Migrations run after the port is open and do not take the process down if they fail. A missing `DATABASE_URL` uses a local placeholder that does not connect. `/health` still returns 503 when Postgres or Redis is down. The Railway probe is `/live`, which only checks that the process is listening.
+
 ## 2026-10-06 — Prisma needs DATABASE_URL when the config file loads
 
 `env("DATABASE_URL")` throws while Prisma loads `packages/db/prisma.config.ts`, before it connects. Two places hit that with no `.env` file in the working directory.

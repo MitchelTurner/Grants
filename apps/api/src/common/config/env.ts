@@ -57,15 +57,26 @@ export function formatEnvError(error: z.ZodError): string {
     .join("\n");
 }
 
+// SPEC-QUESTION: A missing URL must not exit the process before Railway can
+// reach /live. The placeholder does not point at a real database. Health
+// reports the failure.
+const unconfiguredDatabaseUrl = "postgresql://127.0.0.1:5432/segrants";
+let warnedAboutDatabaseUrl = false;
+
 export function loadEnv(source: NodeJS.ProcessEnv = process.env): Env {
   // SPEC-QUESTION: A linked Railway Postgres service may set DATABASE_PRIVATE_URL
   // or DATABASE_PUBLIC_URL and leave DATABASE_URL empty. Use that connection string.
-  const databaseUrl =
+  const configured =
     source.DATABASE_URL || source.DATABASE_PRIVATE_URL || source.DATABASE_PUBLIC_URL;
+  const databaseUrl = configured || unconfiguredDatabaseUrl;
+  if (!configured && !warnedAboutDatabaseUrl) {
+    warnedAboutDatabaseUrl = true;
+    console.error(
+      "DATABASE_URL is not set. The process will keep listening and the health check will report the database as down.",
+    );
+  }
   const withDatabase =
-    databaseUrl && databaseUrl !== source.DATABASE_URL
-      ? { ...source, DATABASE_URL: databaseUrl }
-      : source;
+    databaseUrl !== source.DATABASE_URL ? { ...source, DATABASE_URL: databaseUrl } : source;
   const parsed = envSchema.safeParse(withDatabase);
   if (!parsed.success) {
     throw new Error(`Invalid environment:\n${formatEnvError(parsed.error)}`);

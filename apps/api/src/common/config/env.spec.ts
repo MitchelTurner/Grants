@@ -31,10 +31,10 @@ describe("loadEnv", () => {
     expect(() => loadEnv({ ...valid, SESSION_SECRET: "short" })).toThrow(/SESSION_SECRET/);
   });
 
-  it("refuses to boot when the database url is missing", () => {
+  it("keeps a missing database url from exiting the process", () => {
     const source: NodeJS.ProcessEnv = { ...valid };
     delete source.DATABASE_URL;
-    expect(() => loadEnv(source)).toThrow(/DATABASE_URL/);
+    expect(loadEnv(source).DATABASE_URL).toBe("postgresql://127.0.0.1:5432/segrants");
   });
 
   it("uses a linked Postgres URL when DATABASE_URL is empty", () => {

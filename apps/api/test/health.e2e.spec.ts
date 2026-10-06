@@ -15,6 +15,12 @@ describe("health", () => {
     await app.close();
   });
 
+  it("GET /live answers before dependencies are checked", async () => {
+    const response = await request(app.getHttpServer()).get("/live");
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({ status: "ok", service: "se-grants-api" });
+  });
+
   it("GET /health reports postgres and redis", async () => {
     const response = await request(app.getHttpServer()).get("/health");
     expect(response.status).toBe(200);

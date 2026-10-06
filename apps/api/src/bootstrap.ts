@@ -105,6 +105,12 @@ export async function createApp(): Promise<INestApplication> {
     const body = await health.check();
     res.status(body.status === "ok" ? 200 : 503).json(body);
   });
+  // SPEC-QUESTION: Railway marks a deployment crashed when this probe is not
+  // 200. /health stays 503 while Postgres or Redis is down, so the deploy
+  // probe only checks that the process is listening.
+  http.get("/live", (_req, res) => {
+    res.status(200).json({ status: "ok", service: "se-grants-api" });
+  });
 
   mountSpa(http);
   return app;

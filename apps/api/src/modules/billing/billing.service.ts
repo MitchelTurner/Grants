@@ -1,6 +1,10 @@
 import { BadRequestException, Inject, Injectable } from "@nestjs/common";
 import { AuditService } from "../../common/audit/audit.service";
-import { BILLING, type BillingNotice, type BillingProvider } from "../../common/billing/billing.provider";
+import {
+  BILLING,
+  type BillingNotice,
+  type BillingProvider,
+} from "../../common/billing/billing.provider";
 import { ENV, type Env } from "../../common/config/env";
 import { PrismaService } from "../../common/prisma/prisma.service";
 
@@ -28,7 +32,9 @@ export class BillingService {
       throw new BadRequestException("This organization already has a sponsored seat.");
     }
     if (org.plan === "PRO") {
-      throw new BadRequestException("This organization is already on Pro. Open the billing page to manage it.");
+      throw new BadRequestException(
+        "This organization is already on Pro. Open the billing page to manage it.",
+      );
     }
     const priceId = this.env.STRIPE_PRICE_PRO;
     if (!priceId && this.billing.mode === "stripe") {
@@ -98,8 +104,16 @@ export class BillingService {
       });
       return;
     }
-    if (notice.type === "customer.subscription.deleted" || notice.type === "customer.subscription.updated") {
-      if (notice.type === "customer.subscription.updated" && object.status !== "canceled" && object.status !== "unpaid" && object.status !== "incomplete_expired") {
+    if (
+      notice.type === "customer.subscription.deleted" ||
+      notice.type === "customer.subscription.updated"
+    ) {
+      if (
+        notice.type === "customer.subscription.updated" &&
+        object.status !== "canceled" &&
+        object.status !== "unpaid" &&
+        object.status !== "incomplete_expired"
+      ) {
         return;
       }
       const subscriptionId = object.id;
