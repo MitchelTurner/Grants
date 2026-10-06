@@ -2,6 +2,10 @@
 
 Running log of choices made where the spec was silent, or where a dependency constraint forced a narrower option. Newest first.
 
+## 2026-10-06 — The public home page lists open grants
+
+The first public page shows published open and upcoming grants. No search and no account are required. A short survey on that page (organization type, community, focus, federal funds) narrows the same list with the quiz fit rules. Answers are not saved. The separate `/quiz` page still works. On a narrow screen the grants stay above the survey, and the count line links to that survey.
+
 ## 2026-10-06 — Missing session secrets do not exit the process
 
 `SESSION_SECRET` and `CSRF_SECRET` are not injected by Railway unless someone sets them on the service. Validation threw, the process exited, and the restart policy printed the same error until the deploy was marked crashed.

@@ -305,6 +305,26 @@ describe("phase 2", () => {
         requiresSam: true,
       },
     });
+    const home = await request(app.getHttpServer()).get("/");
+    expect(home.status).toBe(200);
+    expect(home.text).toContain(`Quiz Grant ${stamp}`);
+    expect(home.text).toContain("Narrow this list");
+    const narrowed = await request(app.getHttpServer()).get("/").query({
+      orgType: "NONPROFIT_501C3",
+      community: "Haines",
+      focus: "Food Security & Subsistence",
+      federal: "no",
+    });
+    expect(narrowed.status).toBe(200);
+    expect(narrowed.text).toContain(`Quiz Grant ${stamp}`);
+    expect(narrowed.text).toContain("Good fit");
+    expect(narrowed.text).toContain("SAM.gov");
+    const other = await request(app.getHttpServer()).get("/").query({
+      orgType: "INDIVIDUAL",
+      community: "Haines",
+      focus: "Food Security & Subsistence",
+    });
+    expect(other.text).not.toContain(`Quiz Grant ${stamp}`);
     const form = await request(app.getHttpServer()).get("/quiz");
     expect(form.status).toBe(200);
     expect(form.text).toContain("Which grants might fit?");

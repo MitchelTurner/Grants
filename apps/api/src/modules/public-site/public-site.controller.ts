@@ -8,8 +8,8 @@ export class PublicSiteController {
 
   @Get()
   @Header("content-type", "text/html; charset=utf-8")
-  home() {
-    return this.site.home();
+  home(@Query() query: Record<string, string | undefined>) {
+    return this.site.home(query);
   }
 
   @Get("grants")

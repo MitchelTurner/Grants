@@ -2,8 +2,16 @@ import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { Injectable } from "@nestjs/common";
 import Handlebars from "handlebars";
-import type { OpportunityStatus } from "@se-grants/db";
-import { displayDeadline } from "@se-grants/shared";
+import type { OpportunityStatus, OrgType } from "@se-grants/db";
+import {
+  displayDeadline,
+  fitLabelText,
+  FOCUS_AREAS,
+  ORG_TYPES,
+  orgTypeLabel,
+  scoreFit,
+  SE_COMMUNITIES,
+} from "@se-grants/shared";
 import { Inject } from "@nestjs/common";
 import { ENV, type Env } from "../../common/config/env";
 import { PrismaService } from "../../common/prisma/prisma.service";
@@ -22,15 +30,80 @@ export class PublicSiteService {
     this.layout = Handlebars.compile(source);
   }
 
-  page(title: string, description: string, body: string): string {
-    return this.layout({ title, description, body });
+  page(title: string, description: string, body: string, bodyClass = ""): string {
+    return this.layout({ title, description, body, bodyClass });
   }
 
-  async home(): Promise<string> {
+  async home(query: Record<string, string | undefined> = {}): Promise<string> {
+    const survey = readSurvey(query);
+    const rows = await this.prisma.db.opportunity.findMany({
+      where: {
+        isPublic: true,
+        status: { in: ["OPEN", "UPCOMING"] },
+        funder: { isPublished: true },
+      },
+      include: { funder: true },
+      orderBy: { deadlineAt: { sort: "asc", nulls: "last" } },
+      take: 200,
+    });
+    const narrowing = Boolean(survey.orgType || survey.community || survey.focus);
+    const shown = rows.flatMap((row) => {
+      const note =
+        survey.federal === "no" && row.requiresSam
+          ? "This one asks for a SAM.gov registration."
+          : "";
+      if (!narrowing) return [opportunityCard(row, note)];
+      if (survey.orgType && survey.community && survey.focus) {
+        const fit = scoreFit({
+          orgType: survey.orgType,
+          community: survey.community,
+          servesCommunities: [],
+          focusAreas: [survey.focus],
+          eligibleOrgTypes: row.eligibleOrgTypes,
+          eligibleCommunities: row.eligibleCommunities,
+          focusAreasOnOpportunity: row.focusAreas,
+        });
+        if (fit.label === "not_eligible") return [];
+        return [opportunityCard(row, note, fitLabelText(fit.label))];
+      }
+      if (
+        survey.orgType &&
+        row.eligibleOrgTypes.length > 0 &&
+        !row.eligibleOrgTypes.includes(survey.orgType)
+      ) {
+        return [];
+      }
+      if (
+        survey.community &&
+        row.eligibleCommunities.length > 0 &&
+        !row.eligibleCommunities.includes(survey.community)
+      ) {
+        return [];
+      }
+      if (survey.focus && row.focusAreas.length > 0 && !row.focusAreas.includes(survey.focus)) {
+        return [];
+      }
+      return [opportunityCard(row, note)];
+    });
+    const count = narrowing
+      ? `${shown.length} match${shown.length === 1 ? "" : "es"} for those answers.`
+      : `${shown.length} open or upcoming grant${shown.length === 1 ? "" : "s"}. No account needed.`;
+    const empty = narrowing
+      ? `<p>No published grant matched those answers. <a href="/">Show every open grant</a></p>`
+      : `<p>No opportunities are published yet. A curator checks each record before it appears here.</p>`;
     const body = `
-      <h1>Never miss a deadline.</h1>
-      <p>Southeast Grants is a workspace for nonprofits, tribes, small businesses, and small cities in Southeast Alaska. Find regional money, keep reusable writing, and track the dates that keep future funding safe.</p>
-      <p><a class="button" href="/app/sign-in">Create a free account</a> <a class="button" href="/quiz">Check what might fit</a></p>
+      <div class="catalog">
+        <section>
+          <h1>Open grants in Southeast Alaska</h1>
+          <p>Read what is published now. A short survey on this page can narrow the list. Nothing you answer is saved, and you do not need an account.</p>
+          <p class="muted">${count} <a href="#narrow">Narrow this list</a></p>
+          <div class="grant-list">
+            ${shown.join("") || empty}
+          </div>
+          <p><a href="/grants">Browse the full directory</a></p>
+        </section>
+        ${surveyForm(survey)}
+      </div>
       <section class="card">
         <h2>Southeast Grants digest</h2>
         <p class="muted">A weekly email of open opportunities. A person reviews it before it goes out. You confirm your address first.</p>
@@ -43,8 +116,9 @@ export class PublicSiteService {
       </section>`;
     return this.page(
       "Southeast Grants",
-      "A Southeast Alaska workspace for finding grants and keeping deadlines with the organization.",
+      "Published grant opportunities for Southeast Alaska. No account required.",
       body,
+      "wide",
     );
   }
 
@@ -237,6 +311,110 @@ function resolveView(name: string): string {
   const found = candidates.find((path) => existsSync(path));
   if (!found) throw new Error(`Missing view ${name}`);
   return found;
+}
+
+type PublicOpportunity = {
+  title: string;
+  slug: string;
+  summary: string;
+  status: OpportunityStatus;
+  focusAreas: string[];
+  deadlineAt: Date | null;
+  deadlineTimezone: string | null;
+  requiresSam: boolean;
+  funder: { name: string };
+};
+
+type SurveyAnswers = {
+  orgType?: OrgType;
+  community?: string;
+  focus?: string;
+  federal?: "yes" | "no";
+};
+
+function readSurvey(query: Record<string, string | undefined>): SurveyAnswers {
+  const orgType = ORG_TYPES.find((type) => type === query.orgType);
+  const focus = FOCUS_AREAS.find((area) => area === query.focus);
+  const community = query.community?.trim().slice(0, 120) || undefined;
+  const federal = query.federal === "yes" || query.federal === "no" ? query.federal : undefined;
+  return { orgType, focus, community, federal };
+}
+
+function surveyForm(survey: SurveyAnswers): string {
+  const types = ORG_TYPES.map(
+    (type) =>
+      `<option value="${type}" ${survey.orgType === type ? "selected" : ""}>${escapeHtml(orgTypeLabel(type))}</option>`,
+  ).join("");
+  const communities = communityOptions(survey.community);
+  const focuses = FOCUS_AREAS.map(
+    (area) =>
+      `<option value="${escapeHtml(area)}" ${survey.focus === area ? "selected" : ""}>${escapeHtml(area)}</option>`,
+  ).join("");
+  return `<aside class="card survey" id="narrow">
+      <h2>Narrow this list</h2>
+      <p class="muted">Answer any of these. The list updates on this page. Answers are not saved.</p>
+      <form method="get" action="/">
+        <label>Organization type
+          <select name="orgType">
+            <option value="">Any</option>
+            ${types}
+          </select>
+        </label>
+        <label>Community
+          <select name="community">
+            <option value="">Any</option>
+            ${communities}
+          </select>
+        </label>
+        <label>Focus
+          <select name="focus">
+            <option value="">Any</option>
+            ${focuses}
+          </select>
+        </label>
+        <label>Already receiving federal funds?
+          <select name="federal">
+            <option value="">Not sure</option>
+            <option value="yes" ${survey.federal === "yes" ? "selected" : ""}>Yes</option>
+            <option value="no" ${survey.federal === "no" ? "selected" : ""}>No</option>
+          </select>
+        </label>
+        <p class="actions"><button type="submit">Show matches</button> <a class="button button-quiet" href="/">Show every open grant</a></p>
+      </form>
+    </aside>`;
+}
+
+function communityOptions(selected: string | undefined): string {
+  const known = SE_COMMUNITIES.includes(selected as (typeof SE_COMMUNITIES)[number]);
+  const extra =
+    selected && !known
+      ? `<option value="${escapeHtml(selected)}" selected>${escapeHtml(selected)}</option>`
+      : "";
+  const options = SE_COMMUNITIES.map(
+    (community) =>
+      `<option value="${escapeHtml(community)}" ${selected === community ? "selected" : ""}>${escapeHtml(community)}</option>`,
+  ).join("");
+  return extra + options;
+}
+
+function opportunityCard(row: PublicOpportunity, federalNote: string, fit?: string): string {
+  const when = row.deadlineAt
+    ? displayDeadline(row.deadlineAt, "America/Juneau", row.deadlineTimezone)
+    : null;
+  const chips = [row.status === "UPCOMING" ? "Upcoming" : "Open", ...row.focusAreas.slice(0, 3)]
+    .map((chip) => `<span class="chip">${escapeHtml(chip)}</span>`)
+    .join("");
+  const deadline = when
+    ? `${escapeHtml(when.primary)}${when.original ? ` <span class="chip">${escapeHtml(when.original)}</span>` : ""}`
+    : "No fixed deadline";
+  return `<article class="card grant-card">
+      <h2><a href="/grants/${escapeHtml(row.slug)}">${escapeHtml(row.title)}</a></h2>
+      <p class="muted">${escapeHtml(row.funder.name)} · ${deadline}</p>
+      <p>${escapeHtml(row.summary)}</p>
+      ${fit ? `<p>${escapeHtml(fit)}</p>` : ""}
+      ${federalNote ? `<p>${escapeHtml(federalNote)}</p>` : ""}
+      <div class="chips">${chips}</div>
+    </article>`;
 }
 
 function escapeHtml(value: string): string {

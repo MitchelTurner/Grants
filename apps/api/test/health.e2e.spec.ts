@@ -51,6 +51,7 @@ describe("health", () => {
     const response = await request(app.getHttpServer()).get("/");
     expect(response.status).toBe(200);
     expect(response.text).toContain("Southeast Grants");
-    expect(response.text).toContain("Never miss a deadline");
+    expect(response.text).toContain("Open grants in Southeast Alaska");
+    expect(response.text).toContain("Narrow this list");
   });
 });
