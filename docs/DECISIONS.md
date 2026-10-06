@@ -15,6 +15,7 @@ Phase 2 is in the app. Phase 3 and Phase 4 are not. The assistant is `@anthropic
 - Packet passwords are scrypt hashes. The link shows the files only after the password, and download URLs last 5 minutes.
 - pdf.js loads only on the RFP review screen. The first app script stays under 200 KB gzip.
 - `pnpm eval:rfp` is manual. The fixture folder holds expected JSON for three synthetic checks. Drop in public PDFs locally before a paid run. It is not in CI.
+- Local file URLs are absolute `APP_URL` links. The dev app on port 5173 rewrites only `/api/v1/dev-storage` to a same-origin path so Vite can proxy the upload and the PDF viewer. S3 links stay absolute.
 
 ## 2026-10-06 — Phase 1 is in the app; launch accounts are not
 

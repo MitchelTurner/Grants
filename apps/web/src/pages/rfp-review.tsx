@@ -6,6 +6,7 @@ import workerUrl from "pdfjs-dist/build/pdf.worker.min.mjs?url";
 import { useAuth, useOrg } from "../auth";
 import { Button, Notice, Page, controlClass } from "../components/ui";
 import { api } from "../lib/api";
+import { localStorageUrl } from "../lib/compress";
 
 type Extraction = RfpExtractionResult;
 
@@ -68,7 +69,7 @@ export function RfpReviewPage() {
     void (async () => {
       const pdfjs = await import("pdfjs-dist");
       pdfjs.GlobalWorkerOptions.workerSrc = workerUrl;
-      const task = pdfjs.getDocument({ url });
+      const task = pdfjs.getDocument({ url: localStorageUrl(url) });
       const pdf = await task.promise;
       const chosen = Math.min(Math.max(page, 1), pdf.numPages);
       const rendered = await pdf.getPage(chosen);

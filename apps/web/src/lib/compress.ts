@@ -1,5 +1,22 @@
 const MAX_EDGE = 2000;
 
+/**
+ * Memory storage signs an absolute APP_URL. The dev app runs on another port,
+ * so a cross-origin PUT fails. Keep S3 URLs absolute and send the local
+ * storage path through the page origin (Vite proxies `/api`).
+ */
+export function localStorageUrl(url: string): string {
+  try {
+    const parsed = new URL(url, "http://localhost");
+    if (parsed.pathname === "/api/v1/dev-storage") {
+      return `${parsed.pathname}${parsed.search}`;
+    }
+  } catch {
+    return url;
+  }
+  return url;
+}
+
 /** Shrink photos before upload. HEIC becomes JPG when the browser can decode it. */
 export async function prepareUpload(
   file: File,
@@ -64,7 +81,7 @@ function putOnce(
 ): Promise<void> {
   return new Promise((resolve, reject) => {
     const request = new XMLHttpRequest();
-    request.open("PUT", url);
+    request.open("PUT", localStorageUrl(url));
     request.setRequestHeader("content-type", type);
     request.upload.onprogress = (event) => {
       if (event.lengthComputable) onProgress(event.loaded / event.total);
