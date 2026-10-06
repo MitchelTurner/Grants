@@ -31,6 +31,19 @@ describe("loadEnv", () => {
     expect(() => loadEnv({ ...valid, SESSION_SECRET: "short" })).toThrow(/SESSION_SECRET/);
   });
 
+  it("generates session and csrf secrets when they are missing", () => {
+    const source: NodeJS.ProcessEnv = { ...valid };
+    delete source.SESSION_SECRET;
+    delete source.CSRF_SECRET;
+    const first = loadEnv(source);
+    const second = loadEnv(source);
+    expect(first.SESSION_SECRET.length).toBeGreaterThanOrEqual(32);
+    expect(first.CSRF_SECRET.length).toBeGreaterThanOrEqual(32);
+    expect(second.SESSION_SECRET).toBe(first.SESSION_SECRET);
+    expect(second.CSRF_SECRET).toBe(first.CSRF_SECRET);
+    expect(first.SESSION_SECRET).not.toBe(first.CSRF_SECRET);
+  });
+
   it("keeps a missing database url from exiting the process", () => {
     const source: NodeJS.ProcessEnv = { ...valid };
     delete source.DATABASE_URL;

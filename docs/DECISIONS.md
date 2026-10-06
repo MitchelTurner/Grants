@@ -2,6 +2,12 @@
 
 Running log of choices made where the spec was silent, or where a dependency constraint forced a narrower option. Newest first.
 
+## 2026-10-06 — Missing session secrets do not exit the process
+
+`SESSION_SECRET` and `CSRF_SECRET` are not injected by Railway unless someone sets them on the service. Validation threw, the process exited, and the restart policy printed the same error until the deploy was marked crashed.
+
+When either value is missing or blank, this process generates a 32-byte secret and reuses it for every `loadEnv` call in that process. A restart generates new values, so sign-in does not survive a reboot until the service has real secrets. A short value that was actually set is still rejected. The generated values are not logged.
+
 ## 2026-10-06 — The process listens before migrations finish
 
 Railway marks a deployment crashed when the start command exits, or when the deploy probe is not HTTP 200. `prisma migrate deploy` was running before Node listened. A missing `DATABASE_URL`, or a migration that failed, exited the container, so the probe never got an answer.

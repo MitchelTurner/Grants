@@ -43,7 +43,7 @@ API tests expect Postgres at `postgresql://postgres:postgres@localhost:5432/segr
 
 ## Production shape
 
-The Docker image serves the API and the built app. On start it applies Prisma migrations, then listens on `PORT`. The image does not contain a database URL. Set `DATABASE_URL` on the service. A linked Railway Postgres service may provide `DATABASE_PRIVATE_URL` instead; the start script copies that into `DATABASE_URL`.
+The Docker image serves the API and the built app. On start it listens on `PORT`, then applies Prisma migrations. The image does not contain a database URL. Set `DATABASE_URL` on the service. A linked Railway Postgres service may provide `DATABASE_PRIVATE_URL` instead; the start script copies that into `DATABASE_URL`. Set `SESSION_SECRET` and `CSRF_SECRET` on the service as well. If they are missing, the process generates its own for that boot so the deploy can finish; sign-in does not survive a restart until the real values are set.
 
 Railway web service: this repo's `Dockerfile`. The deploy probe is `/live` (the process is listening). `/health` still returns 503 when Postgres or Redis is down.
 
